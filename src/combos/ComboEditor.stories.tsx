@@ -57,6 +57,7 @@ export const NewCombo: Story = {
   args: {
     combo: {
       name: "",
+      displayOrder: 0,
       keyPositions: [],
       layers: 0,
       binding: undefined,
