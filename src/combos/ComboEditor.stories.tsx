@@ -56,6 +56,7 @@ export const NoLayoutTextFallback: Story = {
 export const NewCombo: Story = {
   args: {
     combo: {
+      name: "",
       keyPositions: [],
       layers: 0,
       binding: undefined,
