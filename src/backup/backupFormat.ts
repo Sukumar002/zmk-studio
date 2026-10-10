@@ -41,6 +41,10 @@ export interface ExportedLayer {
 export interface ExportedCombo {
   /** Pool slot the combo occupied — import tries to re-create it at the same index. */
   originalIndex: number;
+  /** Optional user-facing name. Absent in backups made before combo naming existed. */
+  name?: string;
+  /** Optional presentation order. Absent in older backups; 0 means pool-index order. */
+  displayOrder?: number;
   keyPositions: number[];
   /** Layer *indices* the combo is active on; null = all layers (mask 0). */
   activeLayerIndices: number[] | null;
