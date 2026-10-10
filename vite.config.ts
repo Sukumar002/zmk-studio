@@ -29,6 +29,9 @@ if (APP_VERSION !== tauriVersion) {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // GitHub Pages hosts this repository under /zmk-studio/. Desktop/Tauri and
+  // local development keep the normal root path unless VITE_BASE is supplied.
+  base: process.env.VITE_BASE || "/",
   plugins: [react()],
   define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
   // prevent vite from obscuring rust errors
