@@ -51,6 +51,7 @@ import { ErrorMessage } from "../misc/Field";
 import { BehaviourList } from "../behaviours/BehaviourList";
 import { BehaviourEditor } from "../behaviours/BehaviourEditor";
 import { defaultBehaviourName } from "../behaviours/behaviourNames";
+import { MouseSettingsPanel } from "./MouseSettingsPanel";
 
 // The left sidebar (master list) on every editor page — Layers, Combos,
 // Behaviours. A fixed `w-72` so all three pages line up exactly; their `auto`
@@ -1362,14 +1363,17 @@ export default function Keyboard({ page }: { page: Page }) {
         */}
 
         {keymap && (
-          <LayerPicker
-            layers={keymap.layers}
-            selectedLayerIndex={selectedLayerIndex}
-            onLayerClicked={setSelectedLayerIndex}
-            onLayerMoved={moveLayer}
-            canAdd={(keymap.availableLayers || 0) > 0}
-            onAddClicked={addLayer}
-          />
+          <>
+            <LayerPicker
+              layers={keymap.layers}
+              selectedLayerIndex={selectedLayerIndex}
+              onLayerClicked={setSelectedLayerIndex}
+              onLayerMoved={moveLayer}
+              canAdd={(keymap.availableLayers || 0) > 0}
+              onAddClicked={addLayer}
+            />
+            <MouseSettingsPanel />
+          </>
         )}
       </div>
       {layouts && keymap && behaviors && (
