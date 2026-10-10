@@ -375,6 +375,8 @@ export async function importBackup(
     }
 
     const combo: Combo = {
+      name: c.name ?? "",
+      displayOrder: c.displayOrder ?? 0,
       keyPositions: [...c.keyPositions],
       layers,
       binding,
