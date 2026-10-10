@@ -812,6 +812,7 @@ export default function Keyboard({ page }: { page: Page }) {
     setSelectedComboIndex(undefined);
     setDraftCombo({
       name: "",
+      displayOrder: 0,
       keyPositions: [],
       layers: 0,
       binding: undefined,
@@ -831,6 +832,86 @@ export default function Keyboard({ page }: { page: Page }) {
       }
     },
     [draftCombo, selectedComboIndex, doCreateCombo, doUpdateCombo]
+  );
+
+  const moveCombo = useCallback(
+    (index: number, delta: -1 | 1) => {
+      if (!combos) return;
+      const selected = combos.combos.find((entry) => entry.index === index);
+      if (!selected?.combo) return;
+
+      const mask = selected.combo.layers;
+      const group = combos.combos
+        .filter((entry) => entry.combo?.layers === mask && entry.combo)
+        .slice()
+        .sort((a, b) => {
+          const ao = a.combo!.displayOrder || a.index + 1;
+          const bo = b.combo!.displayOrder || b.index + 1;
+          return ao - bo || a.index - b.index;
+        });
+
+      const from = group.findIndex((entry) => entry.index === index);
+      const to = from + delta;
+      if (from < 0 || to < 0 || to >= group.length) return;
+
+      const before = group.map((entry) => ({
+        index: entry.index,
+        combo: { ...entry.combo! },
+      }));
+
+      [group[from], group[to]] = [group[to], group[from]];
+      const after = group.map((entry, position) => ({
+        index: entry.index,
+        combo: { ...entry.combo!, displayOrder: position + 1 },
+      }));
+
+      const apply = async (items: Array<{ index: number; combo: Combo }>) => {
+        if (!conn.conn) throw new Error("Not connected");
+        for (const item of items) {
+          const resp = await call_rpc(conn.conn, {
+            combos: { setCombo: { index: item.index, combo: item.combo } },
+          });
+          if (resp.combos?.setCombo !== SetComboResponse.SET_COMBO_RESP_OK) {
+            throw new Error("Failed to reorder combo #" + item.index);
+          }
+        }
+        setCombos(
+          editData<Combos>((draft) => {
+            for (const item of items) {
+              const entry = draft.combos.find((e) => e.index === item.index);
+              if (entry) entry.combo = item.combo;
+            }
+          })
+        );
+      };
+
+      undoRedo?.(async () => {
+        await apply(after);
+        return async () => apply(before);
+      });
+    },
+    [combos, conn, setCombos, undoRedo]
+  );
+
+  const canMoveCombo = useCallback(
+    (index: number, delta: -1 | 1) => {
+      if (!combos) return false;
+      const selected = combos.combos.find((entry) => entry.index === index);
+      if (!selected?.combo) return false;
+      const mask = selected.combo.layers;
+      const group = combos.combos
+        .filter((entry) => entry.combo?.layers === mask && entry.combo)
+        .slice()
+        .sort((a, b) => {
+          const ao = a.combo!.displayOrder || a.index + 1;
+          const bo = b.combo!.displayOrder || b.index + 1;
+          return ao - bo || a.index - b.index;
+        });
+      const pos = group.findIndex((entry) => entry.index === index);
+      const target = pos + delta;
+      return pos >= 0 && target >= 0 && target < group.length;
+    },
+    [combos]
   );
 
   // Selecting an existing combo discards any in-progress draft (it holds nothing
@@ -1245,6 +1326,16 @@ export default function Keyboard({ page }: { page: Page }) {
                 maxKeysPerCombo={combos.maxKeysPerCombo}
                 onApply={doApplyCombo}
                 onDelete={doRemoveCombo}
+                onMoveUp={
+                  selectedCombo && canMoveCombo(selectedCombo.index, -1)
+                    ? (index) => moveCombo(index, -1)
+                    : undefined
+                }
+                onMoveDown={
+                  selectedCombo && canMoveCombo(selectedCombo.index, 1)
+                    ? (index) => moveCombo(index, 1)
+                    : undefined
+                }
               />
             ) : (
               <div className="grid flex-1 place-items-center text-center text-base-content/60">
