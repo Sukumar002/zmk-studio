@@ -29,7 +29,7 @@ jobs:
         with:
           repository: Sukumar002/zmk-studio-ts-client
           ref: hana-combo-names
-          submodules: recursive
+          submodules: false
           path: zmk-studio-ts-client
 
       - name: Setup Node
