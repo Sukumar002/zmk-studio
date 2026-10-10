@@ -64,6 +64,8 @@ export function buildBackup({
         ? [
             {
               originalIndex: entry.index,
+              name: entry.combo.name || "",
+              displayOrder: entry.combo.displayOrder || 0,
               keyPositions: [...entry.combo.keyPositions],
               activeLayerIndices: decodeLayerMask(entry.combo.layers),
               binding: exportBinding(
