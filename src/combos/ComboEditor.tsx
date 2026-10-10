@@ -103,6 +103,7 @@ export const ComboEditor = ({
   onApply,
   onDelete,
 }: ComboEditorProps) => {
+  const [name, setName] = useState("");
   const [keyPositions, setKeyPositions] = useState<number[]>([]);
   const [timeoutMs, setTimeoutMs] = useState(0);
   const [requirePriorIdleMs, setRequirePriorIdleMs] = useState(0);
@@ -113,6 +114,7 @@ export const ComboEditor = ({
 
   // Reload local state whenever a different combo (or a fresh copy) is selected.
   useEffect(() => {
+    setName(combo.name || "");
     setKeyPositions(combo.keyPositions || []);
     setTimeoutMs(combo.timeoutMs);
     setRequirePriorIdleMs(combo.requirePriorIdleMs);
@@ -159,6 +161,15 @@ export const ComboEditor = ({
           </Button>
         )}
       </div>
+
+      <TextField
+        inputClassName="max-w-sm"
+        label="Name"
+        description="Optional. Stored on the keyboard and shown in the combo list."
+        value={name}
+        inputProps={{ maxLength: 31 }}
+        onChange={setName}
+      />
 
       <div className="flex flex-col gap-1">
         <GroupLabel id={keyPositionsLabelId}>
@@ -257,6 +268,7 @@ export const ComboEditor = ({
             return;
           }
           onApply({
+            name: name.trim(),
             keyPositions,
             layers: layersMask,
             binding,
