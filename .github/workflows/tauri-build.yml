@@ -44,8 +44,8 @@ jobs:
       # only symlinks that path, so the ts-client is built explicitly further down.
       - uses: actions/checkout@v4
         with:
-          repository: danielsvane/zmk-studio-ts-client
-          ref: customkeyboards
+          repository: Sukumar002/zmk-studio-ts-client
+          ref: hana-combo-names
           submodules: recursive
           path: zmk-studio-ts-client
 
