@@ -91,6 +91,7 @@ export const FIXTURE_COMBOS: Combos = {
     {
       index: 0,
       combo: {
+        name: "Combo 1",
         keyPositions: [0, 1],
         layers: 0,
         binding: { behaviorId: 0, param1: 0x0007002b, param2: 0 }, // Tab
@@ -102,6 +103,7 @@ export const FIXTURE_COMBOS: Combos = {
     {
       index: 1,
       combo: {
+        name: "Combo 2",
         keyPositions: [11, 12, 13],
         layers: 0,
         binding: { behaviorId: 0, param1: 0x00070029, param2: 0 }, // Escape
@@ -113,6 +115,7 @@ export const FIXTURE_COMBOS: Combos = {
     {
       index: 2,
       combo: {
+        name: "Combo 3",
         keyPositions: [30, 31],
         layers: 0,
         binding: { behaviorId: 0, param1: 0x00070028, param2: 0 }, // Enter
@@ -124,6 +127,7 @@ export const FIXTURE_COMBOS: Combos = {
     {
       index: 3,
       combo: {
+        name: "Combo 4",
         keyPositions: [21, 22],
         layers: 0,
         binding: { behaviorId: 0, param1: 0x00070036, param2: 0 }, // Comma
