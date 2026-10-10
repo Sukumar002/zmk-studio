@@ -365,6 +365,8 @@ function makeSourceBackup(): BackupV1 {
       {
         index: 0,
         combo: {
+          name: "",
+          displayOrder: 0,
           keyPositions: [0, 1],
           layers: 0, // all layers
           binding: bind(9), // Studio Unlock
@@ -376,6 +378,8 @@ function makeSourceBackup(): BackupV1 {
       {
         index: 2,
         combo: {
+          name: "",
+          displayOrder: 0,
           keyPositions: [1, 2],
           layers: 0b10, // layer index 1 only
           binding: bind(1, KEY_A),
@@ -494,6 +498,8 @@ describe("importBackup", () => {
       config: [],
     });
     device.combos.set(3, {
+      name: "",
+      displayOrder: 0,
       keyPositions: [2, 3],
       layers: 0,
       binding: bind(100),
