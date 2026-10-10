@@ -6,6 +6,7 @@ import { ComboList } from "./ComboList";
 import {
   FIXTURE_BEHAVIOR_MAP,
   FIXTURE_COMBOS,
+  FIXTURE_LAYERS,
   FIXTURE_LAYOUT,
 } from "../combos/comboFixtures";
 
@@ -16,6 +17,7 @@ const meta = {
     onComboSelected: fn(),
     onAddCombo: fn(),
     canAdd: true,
+    layers: FIXTURE_LAYERS,
   },
 } satisfies Meta<typeof ComboList>;
 
