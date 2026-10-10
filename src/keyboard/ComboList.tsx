@@ -95,6 +95,14 @@ export const ComboList = ({
       else groups.set(label, [entry]);
     }
 
+    for (const entries of groups.values()) {
+      entries.sort((a, b) => {
+        const ao = a.combo?.displayOrder || a.index + 1;
+        const bo = b.combo?.displayOrder || b.index + 1;
+        return ao - bo || a.index - b.index;
+      });
+    }
+
     const ordered: Array<[string, typeof combos.combos]> = [];
     for (const layer of layers) {
       const entries = groups.get(layer.name);
