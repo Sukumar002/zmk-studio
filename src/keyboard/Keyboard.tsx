@@ -811,6 +811,7 @@ export default function Keyboard({ page }: { page: Page }) {
   const addCombo = useCallback(() => {
     setSelectedComboIndex(undefined);
     setDraftCombo({
+      name: "",
       keyPositions: [],
       layers: 0,
       binding: undefined,
@@ -1209,6 +1210,10 @@ export default function Keyboard({ page }: { page: Page }) {
             <ComboList
               combos={combos}
               behaviors={behaviors}
+              layers={(keymap?.layers ?? []).map(({ id, name }, li) => ({
+                id,
+                name: name || li.toLocaleString(),
+              }))}
               layoutKeys={comboLayoutKeys}
               selectedIndex={selectedComboIndex}
               onComboSelected={selectCombo}
