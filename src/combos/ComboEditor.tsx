@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import type { Key } from "react-aria-components";
-import { Save, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Save, Trash2 } from "lucide-react";
 
 import type { GetBehaviorDetailsResponse } from "@zmkfirmware/zmk-studio-ts-client/behaviors";
 import type { Combo } from "@zmkfirmware/zmk-studio-ts-client/combos";
@@ -31,6 +31,8 @@ export interface ComboEditorProps {
   maxKeysPerCombo: number;
   onApply: (combo: Combo) => void;
   onDelete?: (index: number) => void;
+  onMoveUp?: (index: number) => void;
+  onMoveDown?: (index: number) => void;
 }
 
 // The label-row info tip for one of the advanced combo settings, when we have
@@ -102,6 +104,8 @@ export const ComboEditor = ({
   maxKeysPerCombo,
   onApply,
   onDelete,
+  onMoveUp,
+  onMoveDown,
 }: ComboEditorProps) => {
   const [name, setName] = useState("");
   const [keyPositions, setKeyPositions] = useState<number[]>([]);
@@ -150,15 +154,20 @@ export const ComboEditor = ({
         <h2 className="text-sm font-bold uppercase opacity-70">
           {index === undefined ? "New combo" : `Edit combo #${index}`}
         </h2>
-        {onDelete && index !== undefined && (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Trash2 aria-hidden />}
-            onPress={() => onDelete(index)}
-          >
-            Delete
-          </Button>
+        {index !== undefined && (
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" icon={<ArrowUp aria-hidden />} isDisabled={!onMoveUp} onPress={() => onMoveUp?.(index)}>
+              Move up
+            </Button>
+            <Button variant="ghost" size="sm" icon={<ArrowDown aria-hidden />} isDisabled={!onMoveDown} onPress={() => onMoveDown?.(index)}>
+              Move down
+            </Button>
+            {onDelete && (
+              <Button variant="ghost" size="sm" icon={<Trash2 aria-hidden />} onPress={() => onDelete(index)}>
+                Delete
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
@@ -275,6 +284,7 @@ export const ComboEditor = ({
             timeoutMs,
             requirePriorIdleMs,
             slowRelease,
+            displayOrder: combo.displayOrder || 0,
           });
         }}
       >
