@@ -57,7 +57,7 @@ jobs:
           VITE_BASE: /zmk-studio/
         run: npm run build
 
-      - name: Publish dist to gh-pages branch
+      - name: Publish clean dist to gh-pages branch
         working-directory: zmk-studio
         run: |
           rm -rf /tmp/zmk-studio-pages
@@ -68,9 +68,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git checkout --orphan gh-pages
+          # Start from a completely empty orphan branch. git rm only removes
+          # tracked files; git clean is required here so node_modules, dist,
+          # generated src data and the file: dependency symlink cannot leak
+          # into the published Pages branch.
+          git checkout --orphan gh-pages-build
           git rm -rf . >/dev/null 2>&1 || true
+          git clean -fdx
           cp -a /tmp/zmk-studio-pages/. .
           git add -A
           git commit -m "Deploy personalized ZMK Studio"
-          git push --force origin gh-pages
+          git push --force origin HEAD:gh-pages
