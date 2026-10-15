@@ -3,7 +3,7 @@ name: Build GitHub Pages branch
 on:
   push:
     branches:
-      - hana-combo-names
+      - main
   workflow_dispatch:
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Sukumar002/zmk-studio-ts-client
-          ref: hana-combo-names
+          ref: main
           submodules: false
           path: zmk-studio-ts-client
 
