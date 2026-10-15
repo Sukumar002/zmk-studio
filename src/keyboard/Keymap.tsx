@@ -12,10 +12,12 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  ArrowLeftRight,
   Bluetooth,
   Clock3,
   Eye,
   Monitor,
+  Mouse,
   MousePointer2,
   Power,
   RotateCcw,
@@ -100,6 +102,20 @@ function hanaLegend(
     return iconText(<Clock3 className={icon} />, p1 === 0 ? "DSP" : "SLP");
   }
 
+  // Layout-shift controls are zero-parameter custom behaviors, so without an
+  // explicit legend they would render as blank keys.
+  if (name === "toggle layout shift") {
+    return iconText(<ArrowLeftRight className={icon} />, "OS");
+  }
+
+  if (name === "layout shift on") {
+    return iconText(<ArrowLeftRight className={icon} />, "WIN");
+  }
+
+  if (name === "layout shift off") {
+    return iconText(<ArrowLeftRight className={icon} />, "MAC");
+  }
+
   if (name === "bootloader") {
     return iconText(<Power className={icon} />, "BOOT");
   }
@@ -139,7 +155,7 @@ function hanaLegend(
 
   if (name === "mouse move") {
     const { x, y } = decodeAxis(p1);
-    return iconText(<MousePointer2 className="w-3.5 h-3.5" />, directionIcon(x, y));
+    return iconText(<Mouse className="w-3.5 h-3.5" />, directionIcon(x, y));
   }
 
   if (name === "mouse scroll") {
