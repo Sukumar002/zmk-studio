@@ -2,10 +2,10 @@ services:
   - type: web
     name: custom-zmk-studio
     runtime: static
-    branch: hana-combo-names
+    branch: main
     buildCommand: >-
       rm -rf ../zmk-studio-ts-client &&
-      git clone --depth 1 --branch hana-combo-names
+      git clone --depth 1 --branch main
       https://github.com/Sukumar002/zmk-studio-ts-client.git
       ../zmk-studio-ts-client &&
       (cd ../zmk-studio-ts-client && npm install) &&
