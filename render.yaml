@@ -4,6 +4,8 @@ services:
     runtime: static
     branch: main
     buildCommand: >-
+      apt-get update &&
+      apt-get install -y protobuf-compiler &&
       rm -rf ../zmk-studio-ts-client &&
       git clone --depth 1 --branch main
       https://github.com/Sukumar002/zmk-studio-ts-client.git
