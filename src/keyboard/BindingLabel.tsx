@@ -1,17 +1,17 @@
+import type { ReactNode } from "react";
+
 import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
   Bluetooth,
-  Boot,
   Clock3,
   Eye,
   Monitor,
   MousePointer2,
   Power,
   RotateCcw,
-  Trash2,
   Usb,
 } from "lucide-react";
 
@@ -28,14 +28,14 @@ interface BindingLabelProps {
 const iconClass = "size-[1.05em] stroke-[1.8]";
 const smallIconClass = "size-[0.9em] stroke-[1.8]";
 
-const compact = (icon: React.ReactNode, text?: string) => (
+const compact = (icon: ReactNode, text?: ReactNode) => (
   <span className="flex items-center justify-center gap-0.5 leading-none whitespace-nowrap">
     {icon}
     {text && <span className="text-[0.72em] font-sans font-semibold">{text}</span>}
   </span>
 );
 
-const stacked = (top: React.ReactNode, bottom: React.ReactNode) => (
+const stacked = (top: ReactNode, bottom: ReactNode) => (
   <span className="flex flex-col items-center justify-center gap-0.5 leading-none">
     <span className="text-[0.7em] font-sans font-semibold">{top}</span>
     <span className="text-[1.05em]">{bottom}</span>
@@ -159,7 +159,7 @@ export const BindingLabel = ({ binding, behavior }: BindingLabelProps) => {
   }
 
   if (name === "bootloader") {
-    return compact(<Boot className={iconClass} />, "BOOT");
+    return compact(<Power className={iconClass} />, "BOOT");
   }
 
   if (name === "reset") {
