@@ -87,7 +87,13 @@ function hanaLegend(
   // identify the five known SET positions directly. This is intentionally
   // scoped to the SET layer and leaves every other hold-tap untouched.
   if (layerName === "SET" && position >= 1 && position <= 5) {
-    return iconText(<Bluetooth className={icon} />, String(position));
+    return iconText(
+      <Bluetooth className={icon} />,
+      <span className="inline-flex items-start gap-px">
+        <span>{position}</span>
+        <span className="text-[0.72em] opacity-70">×</span>
+      </span>
+    );
   }
 
   if (name.includes("base view")) {
@@ -129,11 +135,26 @@ function hanaLegend(
   }
 
   if (name === "bluetooth") {
-    if (p1 === 4) {
+    // ZMK Bluetooth command values:
+    // 0=clear selected profile, 1=next, 2=previous, 3=select,
+    // 4=clear all profiles, 5=disconnect.
+    if (p1 === 0) {
       return iconText(<Bluetooth className={icon} />, "CLR");
+    }
+    if (p1 === 1) {
+      return iconText(<Bluetooth className={icon} />, "NEXT");
+    }
+    if (p1 === 2) {
+      return iconText(<Bluetooth className={icon} />, "PREV");
     }
     if (p1 === 3) {
       return iconText(<Bluetooth className={icon} />, String(p2 + 1));
+    }
+    if (p1 === 4) {
+      return iconText(<Bluetooth className={icon} />, "ALL");
+    }
+    if (p1 === 5) {
+      return iconText(<Bluetooth className={icon} />, "OFF");
     }
     return <Bluetooth className={icon} />;
   }
