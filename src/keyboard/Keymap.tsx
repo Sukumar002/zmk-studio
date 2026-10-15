@@ -8,7 +8,7 @@ import {
   LayoutZoom,
   PhysicalLayout as PhysicalLayoutComp,
 } from "./PhysicalLayout";
-import { HidUsageLabel } from "./HidUsageLabel";
+import { BindingLabel } from "./BindingLabel";
 
 type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
 
@@ -61,8 +61,13 @@ export const Keymap = ({
       rx: (k.rx || 0) / 100.0,
       ry: (k.ry || 0) / 100.0,
       children: (
-        <HidUsageLabel
-          hid_usage={keymap.layers[selectedLayerIndex].bindings[i].param1}
+        <BindingLabel
+          binding={keymap.layers[selectedLayerIndex].bindings[i]}
+          behavior={
+            behaviors[
+              keymap.layers[selectedLayerIndex].bindings[i].behaviorId
+            ]
+          }
         />
       ),
     };
