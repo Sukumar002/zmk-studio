@@ -8,12 +8,13 @@
   },
   "productName": "ZMK Studio",
   "mainBinaryName": "zmk-studio",
-  "version": "0.3.1",
+  "version": "0.6.0",
   "identifier": "dev.zmk.studio",
   "bundle": {
     "active": true,
     "category": "Productivity",
     "copyright": "",
+    "createUpdaterArtifacts": true,
     "linux": {
       "deb": {
         "depends": []
@@ -43,6 +44,15 @@
     }
   },
   "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEwMzk4REQzMTk4NDlDN0MKUldSOG5JUVowNDA1b1BXa1o5dFFnWkdqWjdDSDhDNUFjSzVSaUsvLzgxbXdPeHV5cEE5R2lZcUMK",
+      "endpoints": [
+        "https://github.com/danielsvane/zmk-studio/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    },
     "cli": {
       "description": "Tauri CLI Plugin Example",
       "args": [

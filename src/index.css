@@ -6,12 +6,28 @@
   @font-face {
     font-family: "Inter";
     src: url("/Inter.woff2") format("woff2");
+    /* Inter.woff2 is the variable font (wght 100-900, opsz 14-32). No
+       `font-weight` range descriptor here on purpose: it's spec-correct to
+       declare one, but measured on both engines we ship to (Chromium 141,
+       WebKitGTK 2.52) it changes nothing — each already interpolates the real
+       `wght` instance for `font-medium`/`font-semibold` rather than synthesising
+       bold. Don't add it expecting a rendering difference; there isn't one. */
     font-display: fallback;
   }
 }
 
 html {
   color-scheme: light dark;
+}
+
+/* The app is a fixed-viewport shell: the document itself never scrolls, only
+   the inner panels (each an overflow-auto region) do. Lock html+body to the
+   viewport height and hide their overflow so a tall panel can't propagate its
+   overflow up to the document and produce a second, page-level scrollbar. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
 }
 
 #root {
@@ -22,7 +38,16 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-
-  width: 100vw;
-  height: 100vh;
+  /* Grayscale antialiasing, to match what a browser gives the same page.
+     WebKitGTK — the Tauri webview on Linux — takes its default from fontconfig,
+     which on a non-GNOME desktop commonly resolves to SUBPIXEL (LCD) rendering:
+     the RGB fringes fatten every stem, so the identical `font-semibold` heading
+     reads noticeably heavier in the desktop app than in Chrome or Firefox (both
+     of which honour the GNOME grayscale setting). Measured on the two: 21% of
+     the desktop title's pixels had per-channel divergence, against none in the
+     browser's. WebKitGTK maps this property onto cairo's antialias mode, so it
+     is the one lever the app itself has. No-op in Chromium/Firefox on
+     Linux/Windows, and on macOS grayscale has been the platform default since
+     Mojave. */
+  -webkit-font-smoothing: antialiased;
 }

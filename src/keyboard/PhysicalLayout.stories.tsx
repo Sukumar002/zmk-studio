@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react";
-import { fn } from "@storybook/test";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import { PhysicalLayout } from "./PhysicalLayout";
 import { HidUsageLabel } from "./HidUsageLabel";
 import { hid_usage_from_page_and_id } from "../hid-usages";
@@ -178,7 +178,6 @@ const POSITIONS = MINIVAN_POSITIONS.map((k, i) => ({ ...k, id: `base-${i}` }));
 export const Minivan: Story = {
   args: {
     positions: POSITIONS,
-    hoverZoom: true,
   },
 };
 
@@ -192,6 +191,5 @@ export const MiniMinivan: Story = {
       height,
     })),
     oneU: 15,
-    hoverZoom: false,
   },
 };

@@ -33,7 +33,8 @@ export const PhysicalLayoutPicker = ({
   onPhysicalLayoutClicked,
 }: PhysicalLayoutPickerProps) => {
   const selectionChanged = useCallback(
-    (e: Key) => {
+    (e: Key | null) => {
+      if (e === null) return;
       onPhysicalLayoutClicked?.(layouts.findIndex((l) => l.name === e));
     },
     [layouts, onPhysicalLayoutClicked],
@@ -65,7 +66,6 @@ export const PhysicalLayoutPicker = ({
               <div className="p-1 flex justify-center">
                 <PhysicalLayout
                   oneU={15}
-                  hoverZoom={false}
                   positions={l.keys.map(
                     ({ x, y, width, height, r, rx, ry }, i) => ({
                       id: `${layouts[selectedPhysicalLayoutIndex].name}-${i}`,

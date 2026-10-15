@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react";
-import { fn } from "@storybook/test";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import { Key } from "./Key";
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
@@ -49,5 +49,14 @@ export const Large: Story = {
     height: 1,
     header: "Key Press",
     children: [<span>C</span>],
+  },
+};
+
+export const ModTap: Story = {
+  args: {
+    width: 1,
+    height: 1,
+    header: "Mod-Tap",
+    children: [<span>Esc</span>, <span>^</span>],
   },
 };

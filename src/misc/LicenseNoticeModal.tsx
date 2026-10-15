@@ -1,7 +1,10 @@
+import { X } from "lucide-react";
+
 import { useModalRef } from "./useModalRef";
 
 import NOTICE from "../../NOTICE?raw";
 import { GenericModal } from "../GenericModal";
+import { Button } from "./Button";
 
 export interface LicenseNoticeModalProps {
   open: boolean;
@@ -19,23 +22,18 @@ export const LicenseNoticeModal = ({
       ref={ref}
       className="min-w-min w-[60vw]"
       onClose={onClose}
+      title="License notice"
+      actions={
+        <Button variant="ghost" icon={<X aria-hidden />} onPress={onClose}>
+          Close
+        </Button>
+      }
     >
-      <div>
-        <div className="flex justify-between items-start">
-          <p className="mr-2">
-            ZMK Studio is released under the open source Apache 2.0 license. A
-            copy of the NOTICE file from the ZMK Studio repository is included
-            here:
-          </p>
-          <button
-            className="p-1.5 rounded-md bg-gray-100 text-black hover:bg-gray-300"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
-        <pre className="m-4 font-mono text-xs">{NOTICE}</pre>
-      </div>
+      <p>
+        ZMK Studio is released under the open source Apache 2.0 license. A copy
+        of the NOTICE file from the ZMK Studio repository is included here:
+      </p>
+      <pre className="m-4 font-mono text-xs">{NOTICE}</pre>
     </GenericModal>
   );
 };

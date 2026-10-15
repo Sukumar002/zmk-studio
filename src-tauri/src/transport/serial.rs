@@ -51,7 +51,14 @@ pub async fn serial_connect(
                 use tauri::Manager;
 
                 while let Some(data) = recv.next().await {
-                    let _res = writer.write(&data).await;
+                    // Same reasoning as the GATT path: a write that keeps failing
+                    // silently leaves the client waiting on responses to requests
+                    // that never went out. Stop, and let the teardown below report
+                    // the disconnect.
+                    if let Err(e) = writer.write(&data).await {
+                        println!("Failed to write to the serial port: {}", e);
+                        break;
+                    }
                 }
 
                 let state = ahc.state::<super::commands::ActiveConnection>();
@@ -77,7 +84,7 @@ pub async fn serial_list_devices(app_handle: AppHandle) -> Result<Vec<super::com
             if let SerialPortType::UsbPort(u) = pi.port_type {
                 Some(super::commands::AvailableDevice {
                     id: pi.port_name,
-                    label: u.product.unwrap_or("TODO".to_string()),
+                    label: u.product.unwrap_or("Unnamed device".to_string()),
                 })
             } else {
                 None

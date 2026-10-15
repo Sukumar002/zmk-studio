@@ -1,5 +1,7 @@
 import React from "react";
+import { X } from "lucide-react";
 import { useModalRef } from "./misc/useModalRef";
+import { Button } from "./misc/Button";
 
 import cannonKeys from "./assets/cannonkeys.png";
 import cannonKeysDarkMode from "./assets/cannonkeys-dark-mode.png";
@@ -179,26 +181,32 @@ export const AboutModal = ({ open, onClose }: AboutModalProps) => {
   const ref = useModalRef(open, true);
 
   return (
-    <GenericModal ref={ref} className="min-w-min w-[70vw]" onClose={onClose}>
-      <div className="flex justify-between items-start">
-        <p>
-          The ZMK Project:{" "}
-          <ExternalLink href="https://zmk.dev/">website</ExternalLink>,{" "}
-          <ExternalLink href="https://github.com/zmkfirmware/zmk/issues/">
-            GitHub Issues
-          </ExternalLink>
-          ,{" "}
-          <ExternalLink href="https://zmk.dev/community/discord/invite">
-            Discord Server
-          </ExternalLink>
-        </p>
-        <button
-          className="p-1.5 rounded-md bg-gray-100 text-black hover:bg-gray-300"
-          onClick={onClose}
-        >
+    <GenericModal
+      ref={ref}
+      className="min-w-min w-[70vw]"
+      onClose={onClose}
+      title="About ZMK Studio"
+      actions={
+        <Button variant="ghost" icon={<X aria-hidden />} onPress={onClose}>
           Close
-        </button>
-      </div>
+        </Button>
+      }
+    >
+      {/* Also in the app menu's footer, but that line is static text a screen
+          reader inside a captured menu never reaches — and this is the dialog a
+          bug report tells people to open. */}
+      <p className="text-sm text-base-content/70">Version {__APP_VERSION__}</p>
+      <p>
+        The ZMK Project:{" "}
+        <ExternalLink href="https://zmk.dev/">website</ExternalLink>,{" "}
+        <ExternalLink href="https://github.com/zmkfirmware/zmk/issues/">
+          GitHub Issues
+        </ExternalLink>
+        ,{" "}
+        <ExternalLink href="https://zmk.dev/community/discord/invite">
+          Discord Server
+        </ExternalLink>
+      </p>
       <div>
         <p className="py-1 mr-2">
           ZMK Studio is made possible thanks to the generous donation of time

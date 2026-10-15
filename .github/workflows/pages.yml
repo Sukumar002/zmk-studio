@@ -1,0 +1,81 @@
+name: Build GitHub Pages branch
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-branch
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Studio
+        uses: actions/checkout@v4
+        with:
+          path: zmk-studio
+          fetch-depth: 0
+
+      - name: Checkout owned Studio client
+        uses: actions/checkout@v4
+        with:
+          repository: Sukumar002/zmk-studio-ts-client
+          ref: main
+          submodules: false
+          path: zmk-studio-ts-client
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: |
+            zmk-studio/package-lock.json
+            zmk-studio-ts-client/package-lock.json
+
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Build owned Studio client
+        working-directory: zmk-studio-ts-client
+        run: npm install
+
+      - name: Install Studio dependencies
+        working-directory: zmk-studio
+        run: npm ci
+
+      - name: Build Studio for GitHub Pages
+        working-directory: zmk-studio
+        env:
+          VITE_BASE: /zmk-studio/
+        run: npm run build
+
+      - name: Publish clean dist to gh-pages branch
+        working-directory: zmk-studio
+        run: |
+          rm -rf /tmp/zmk-studio-pages
+          mkdir -p /tmp/zmk-studio-pages
+          cp -a dist/. /tmp/zmk-studio-pages/
+          touch /tmp/zmk-studio-pages/.nojekyll
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Start from a completely empty orphan branch. git rm only removes
+          # tracked files; git clean is required here so node_modules, dist,
+          # generated src data and the file: dependency symlink cannot leak
+          # into the published Pages branch.
+          git checkout --orphan gh-pages-build
+          git rm -rf . >/dev/null 2>&1 || true
+          git clean -fdx
+          cp -a /tmp/zmk-studio-pages/. .
+          git add -A
+          git commit -m "Deploy personalized ZMK Studio"
+          git push --force origin HEAD:gh-pages

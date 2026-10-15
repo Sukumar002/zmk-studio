@@ -20,25 +20,56 @@ jobs:
           - platform: "ubuntu-24.04"
             name: linux
             args: ""
+          - platform: "ubuntu-24.04-arm"
+            name: linux-arm64
+            args: ""
           - platform: "windows-latest"
             name: windows
             args: ""
 
     runs-on: ${{ matrix.platform }}
+    env:
+      # This fork has no Azure Trusted Signing credentials, so the Windows signing
+      # steps stay off and the .msi/.exe ship unsigned. Adding the AZURE_* secrets
+      # turns the whole signing path back on with no workflow change. `secrets` is
+      # not available in a step `if`, hence the hop through a job-level env var.
+      AZURE_SIGNING: ${{ secrets.AZURE_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: zmk-studio
+
+      # package.json takes the ts-client as `file:../zmk-studio-ts-client`, so it has
+      # to sit next to the checkout — hence both repos land in subdirectories. npm
+      # only symlinks that path, so the ts-client is built explicitly further down.
+      - uses: actions/checkout@v4
+        with:
+          repository: Sukumar002/zmk-studio-ts-client
+          ref: hana-combo-names
+          submodules: recursive
+          path: zmk-studio-ts-client
 
       - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-24.04' # This must match the platform value defined above.
+        if: matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm' # This must match the platform value defined above.
         run: |
           sudo apt-get update
           sudo apt-get install -y libappindicator3-dev librsvg2-dev libudev-dev patchelf \
+            protobuf-compiler \
             libwebkit2gtk-4.1-0=2.44.0-2 \
             libwebkit2gtk-4.1-dev=2.44.0-2 \
             libjavascriptcoregtk-4.1-0=2.44.0-2 \
             libjavascriptcoregtk-4.1-dev=2.44.0-2 \
             gir1.2-javascriptcoregtk-4.1=2.44.0-2 \
             gir1.2-webkit2-4.1=2.44.0-2
+
+      # protoc regenerates the ts-client's protobuf sources, which aren't committed.
+      - name: install protoc (macos only)
+        if: matrix.platform == 'macos-latest'
+        run: brew install protobuf
+
+      - name: install protoc (windows only)
+        if: matrix.platform == 'windows-latest'
+        run: choco install protoc -y
 
       - name: Get release
         id: get_release
@@ -48,20 +79,24 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: install dependencies (windows only)
-        if: matrix.platform == 'windows-latest'
+        if: matrix.platform == 'windows-latest' && env.AZURE_SIGNING != ''
+        working-directory: zmk-studio # signCommand resolves the dlib relative to src-tauri.
         run: |
           nuget.exe install Microsoft.Trusted.Signing.Client -Version 1.0.53 -x
 
       - name: Set up Windows Kit into PATH (windows only)
-        if: matrix.platform == 'windows-latest'
+        if: matrix.platform == 'windows-latest' && env.AZURE_SIGNING != ''
         run: |
-          echo "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.22621.0\x64\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.26100.0\x64\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: "npm" # Set this to npm, yarn or pnpm.
+          cache-dependency-path: |
+            zmk-studio/package-lock.json
+            zmk-studio-ts-client/package-lock.json
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable # Set this to dtolnay/rust-toolchain@nightly
@@ -72,43 +107,188 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: "./zmk-studio/src-tauri -> target"
+
+      # Its postinstall regenerates the protobuf sources and compiles lib/, which the
+      # frontend's tsc step imports. Without this the build fails on unresolved
+      # `@zmkfirmware/zmk-studio-ts-client/*` imports.
+      - name: build ts-client
+        working-directory: zmk-studio-ts-client
+        run: npm install
 
       - name: install frontend dependencies
         # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
+        working-directory: zmk-studio
         run: npm ci
+
+      - name: drop the Windows signCommand (no signing credentials)
+        if: matrix.platform == 'windows-latest' && env.AZURE_SIGNING == ''
+        working-directory: zmk-studio/src-tauri
+        shell: bash
+        run: |
+          node -e "const fs=require('fs'),f='tauri.conf.json',c=JSON.parse(fs.readFileSync(f,'utf8'));delete c.bundle.windows.signCommand;fs.writeFileSync(f,JSON.stringify(c,null,2)+'\n')"
+
+      - uses: azure/login@v2
+        if: matrix.platform == 'windows-latest' && env.AZURE_SIGNING != ''
+        with:
+          enable-AzPSSession: true
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
 
       - uses: tauri-apps/tauri-action@v0
         name: build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # The APPLE_* vars are deliberately absent. A missing secret still defines
+          # the variable as an empty string, and tauri treats set-but-empty as "sign
+          # this", so it ran `security import` on an empty certificate and died with
+          # SecKeychainItemImport. Unlike the Windows steps there is no `if` to hang
+          # this on — an env key can't be conditionally omitted — so with no Apple
+          # certificates to offer, the whole block goes. tauri.conf.json's
+          # signingIdentity "-" then ad-hoc signs the bundle. Restore
+          # APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+          # APPLE_ID, APPLE_PASSWORD and APPLE_TEAM_ID together to sign and notarize.
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          # Not optional once createUpdaterArtifacts is on: with a pubkey in
+          # tauri.conf.json and no private key the bundler fails outright rather
+          # than shipping unsigned updates. This is the updater's own minisign
+          # key, unrelated to the platform code signing above — it proves an
+          # update came from this repo, not that the installer is trusted by the
+          # OS. The key was generated without a password, so the password var is
+          # set-but-empty to keep the CLI from prompting and hanging the run.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
+          projectPath: zmk-studio
           releaseId: ${{ steps.get_release.outputs.id }}
           args: ${{ matrix.args }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: zmk-studio-${{ matrix.name }}
+          # The .sig files and the mac .app.tar.gz are here for the updater
+          # manifest: it embeds each signature and points at the payload the
+          # updater downloads, which on macOS is the tarball rather than the .dmg.
           path: |
-            src-tauri/target/release/bundle/**/*.deb
-            src-tauri/target/release/bundle/**/*.AppImage
-            src-tauri/target/*/release/bundle/**/*.dmg
-            src-tauri/target/*/release/bundle/**/*.app
-            src-tauri/target/release/bundle/**/*.msi
-            src-tauri/target/release/bundle/**/*.exe
-  deploy-netlify:
-    if: github.event_name == 'release'
+            zmk-studio/src-tauri/target/release/bundle/**/*.deb
+            zmk-studio/src-tauri/target/release/bundle/**/*.AppImage
+            zmk-studio/src-tauri/target/release/bundle/**/*.AppImage.sig
+            zmk-studio/src-tauri/target/*/release/bundle/**/*.dmg
+            zmk-studio/src-tauri/target/*/release/bundle/**/*.app
+            zmk-studio/src-tauri/target/*/release/bundle/**/*.app.tar.gz
+            zmk-studio/src-tauri/target/*/release/bundle/**/*.app.tar.gz.sig
+            zmk-studio/src-tauri/target/release/bundle/**/*.msi
+            zmk-studio/src-tauri/target/release/bundle/**/*.exe
+            zmk-studio/src-tauri/target/release/bundle/**/*.exe.sig
+  # Publishes one build to both release lines: the rolling `latest`, so /download
+  # always offers the desktop build matching the deployed site, and — when this push
+  # is the one release-please tagged — the versioned release too. Doing it in one job
+  # rather than from the matrix keeps the four platforms from racing each other to
+  # create the tag. It waits on every platform: a partial set would leave dead links
+  # on the download page, so a single platform failure keeps the previous release in
+  # place instead. Only the versioned release gets an updater manifest, which is
+  # what keeps the in-app updater offering tagged releases rather than following
+  # every push.
+  publish-latest:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/customkeyboards'
     needs: publish-tauri
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Deploy to Netlify
-        run: curl -X POST -d '{}' ${{ secrets.NETLIFY_DEPLOY_HOOK }}
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: publish the desktop installers
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Only the installers DownloadPage matches on — .app is a directory tree
+          # that upload-artifact flattened and nothing consumes.
+          mapfile -d '' assets < <(find artifacts -type f \
+            \( -name '*.deb' -o -name '*.AppImage' -o -name '*.dmg' \
+               -o -name '*.msi' -o -name '*.exe' \) -print0)
+          if [ ${#assets[@]} -eq 0 ]; then
+            echo "::error::no installers among the downloaded artifacts"
+            exit 1
+          fi
+          printf 'publishing %s\n' "${assets[@]}"
+
+          # Nothing serialises these runs, so two pushes inside one build cycle
+          # (~15 min for four platforms) both reach this step. Whoever gets here
+          # last wins the rolling release — which is wrong when that's the OLDER
+          # build, and it happens whenever the first push draws a cold Rust cache
+          # and the second a warm one. So the newest commit on the branch, not
+          # the finishing order, decides: a superseded run leaves `latest` alone.
+          # Deliberately not GitHub `concurrency` with cancel-in-progress, which
+          # would solve the same race by cancelling the earlier run — including a
+          # release build, whose installers can never be reattached to their tag
+          # afterwards (see the tagged block below).
+          #
+          # Fails open on an empty $tip: an API hiccup shouldn't silently drop a
+          # build. `|| tip=` rather than `|| true` because gh prints its error
+          # body to stdout, which would otherwise land in $tip.
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_REF_NAME" --jq .sha 2>/dev/null) || tip=""
+          if [ -n "$tip" ] && [ "$tip" != "$GITHUB_SHA" ]; then
+            echo "superseded: $GITHUB_REF_NAME now points at ${tip::7}, not ${GITHUB_SHA::7}"
+            echo "leaving the rolling release to that build"
+          else
+            # Recreate rather than `upload --clobber`: after a version bump the old
+            # installers would survive under their old names, and the download page
+            # serves whichever asset matches its extension pattern first.
+            gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+            # Marked a prerelease so it stays out of /releases/latest, which is where
+            # the updater endpoint looks for latest.json and must resolve to the
+            # newest tagged version. Recreated on every push, this release would
+            # otherwise win that lookup on created_at every time. The download page
+            # is unaffected: it addresses this release by its `latest` tag.
+            gh release create latest \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "$(node -p "require('./package.json').version") (${GITHUB_SHA::7})" \
+              --notes "Rolling desktop build of the \`customkeyboards\` branch, replaced on every push, and newer than the last tagged release. In-app updates track tagged releases instead, so this one does not offer them. Windows installers are unsigned." \
+              "${assets[@]}"
+          fi
+
+          # Outside the supersession check on purpose: a versioned release only
+          # ever gets its installers from the run that built its tagged commit, so
+          # this half must happen even when a later push has already taken over
+          # the rolling release. Skipping it would leave the tag permanently
+          # binary-less — v0.4.0 is the one that proved it.
+          #
+          # Merging a release-please PR lands one commit and tags it, so a
+          # v<version> tag on this exact commit means this push is a release.
+          # Attach the installers already built here: release-please creates its
+          # release with GITHUB_TOKEN, which raises no `release: published`, so
+          # nothing else would ever put assets on it.
+          tag="v$(node -p "require('./package.json').version")"
+          # commits/<ref> resolves annotated and lightweight tags alike, unlike
+          # git/ref/tags, which hands back the tag object's sha for annotated tags.
+          # `|| tagged=` and not `|| true` inside: on a missing tag gh prints the
+          # error body to stdout, which would land in $tagged and get logged raw.
+          tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/$tag" --jq .sha 2>/dev/null) || tagged=""
+          if [ "$tagged" = "$GITHUB_SHA" ]; then
+            echo "attaching the same installers to $tag"
+            # The mac updater downloads the .app tarball, not the .dmg, so the
+            # versioned release carries it too. The download page's patterns
+            # don't match it, so it stays invisible there.
+            mapfile -d '' payloads < <(find artifacts -type f -name '*.app.tar.gz' -print0)
+            gh release upload "$tag" --clobber "${assets[@]}" "${payloads[@]}"
+
+            # Last, because it names the asset URLs and so needs them to exist.
+            # tauri-action writes this manifest itself, but only when it is the
+            # thing creating the release; on a push it only builds.
+            gh release view "$tag" \
+              --json tagName,body,publishedAt,createdAt,assets > "$RUNNER_TEMP/release.json"
+            node scripts/build-updater-manifest.js \
+              --release "$RUNNER_TEMP/release.json" \
+              --artifacts artifacts \
+              --out "$RUNNER_TEMP/latest.json"
+            gh release upload "$tag" --clobber "$RUNNER_TEMP/latest.json"
+          else
+            echo "no release tag on this commit ($tag -> ${tagged:-absent}); rolling build only"
+          fi

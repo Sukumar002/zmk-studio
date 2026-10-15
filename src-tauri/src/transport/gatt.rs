@@ -49,11 +49,30 @@ pub async fn gatt_connect(
             let c2 = c.clone();
             let ah1 = app_handle.clone();
             let notify_handle = tauri::async_runtime::spawn(async move {
-                if let Ok(mut n) = c2.notify().await {
-                    use tauri::Emitter;
+                use tauri::Emitter;
 
-                    while let Some(Ok(vn)) = n.next().await {
-                        ah1.emit("connection_data", vn.clone());
+                let mut n = match c2.notify().await {
+                    Ok(n) => n,
+                    Err(e) => {
+                        println!("Failed to subscribe to RPC notifications: {}", e.message());
+                        return;
+                    }
+                };
+
+                while let Some(item) = n.next().await {
+                    let vn = match item {
+                        Ok(vn) => vn,
+                        Err(e) => {
+                            // `while let Some(Ok(_))` ended the loop here silently:
+                            // no further data could ever arrive, and nothing said
+                            // why. Every response after it would then hang.
+                            println!("RPC notification stream failed: {}", e.message());
+                            break;
+                        }
+                    };
+
+                    if let Err(e) = ah1.emit("connection_data", vn.clone()) {
+                        println!("Failed to hand RPC data to the frontend: {}", e);
                     }
                 }
             });
@@ -84,13 +103,31 @@ pub async fn gatt_connect(
 
             let (send, mut recv) = channel(5);
             *state.conn.lock().await = Some(Box::new(send));
+            let ah3 = app_handle.clone();
             tauri::async_runtime::spawn(async move {
+                use tauri::Emitter;
+                use tauri::Manager;
+
                 while let Some(data) = recv.next().await {
-                    c.write(&data).await.expect("Write uneventfully");
+                    // A failed write used to `.expect()` here. That panicked this
+                    // task, which dropped the receiver, which made every later
+                    // request vanish into a closed channel while the client waited
+                    // for a reply that could never arrive — a dead keyboard that
+                    // looked like a slow one. Tear the connection down instead, so
+                    // the frontend sees a disconnect and pending calls reject.
+                    if let Err(e) = c.write(&data).await {
+                        println!("Failed to write to the RPC characteristic: {}", e.message());
+                        break;
+                    }
                 }
 
                 disconnect_handle.abort();
                 notify_handle.abort();
+
+                *ah3.state::<super::commands::ActiveConnection>().conn.lock().await = None;
+                if let Err(e) = ah3.emit("connection_disconnected", ()) {
+                    println!("Failed to raise the disconnect: {:?}", e);
+                }
             });
 
             Ok(true)
@@ -119,7 +156,7 @@ async fn check_connected(_: &Adapter, device: &Device) -> bool {
 const ADAPTER_TIMEOUT: Duration = Duration::from_secs(2);
 
 #[command]
-pub async fn gatt_list_devices() -> Result<Vec<super::commands::AvailableDevice>, ()> {
+pub async fn gatt_list_devices() -> Result<Vec<super::commands::AvailableDevice>, String> {
     let adapter = Adapter::default()
         .map(|a| a.ok_or(()))
         .and_then(|a| async {
@@ -133,10 +170,14 @@ pub async fn gatt_list_devices() -> Result<Vec<super::commands::AvailableDevice>
     let mut ret = vec![];
 
     if let Ok(a) = adapter {
+        // BlueZ answers this over D-Bus and can time out — reliably so just after
+        // the adapter has been power-cycled. `.expect()` here panicked the tokio
+        // worker and took the whole scan down with no way for the picker to say
+        // why; hand the reason to the frontend, which has somewhere to show it.
         let devices = a
             .discover_devices(&[SVC_UUID])
             .await
-            .expect("GET DEVICES!")
+            .map_err(|e| format!("Failed to scan for devices: {}", e.message()))?
             .take_until(async_std::task::sleep(Duration::from_secs(2)))
             .filter_map(|d| ready(d.ok()));
 

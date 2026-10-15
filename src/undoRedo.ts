@@ -1,4 +1,4 @@
-import { createContext, useMemo, useState } from "react";
+import { createContext, useCallback, useMemo, useState } from "react";
 
 export type UndoCallback = () => Promise<void>;
 
@@ -27,15 +27,22 @@ export function useUndoRedo(): [
     [locked, redoStack]
   );
 
+  // `finally`, because a callback that throws must not leave the system locked:
+  // every mutation runs through here, and `locked` gates undo *and* redo, so one
+  // failed RPC would disable both for the rest of the session. The throw still
+  // propagates — the caller decides what to say about it.
   const doIt = async (doCb: DoCallback, preserveRedo?: boolean) => {
     setLocked(true);
-    let undo = await doCb();
+    try {
+      const undo = await doCb();
 
-    setUndoStack([[doCb, undo], ...undoStack]);
-    if (!preserveRedo) {
-      setRedoStack([]);
+      setUndoStack([[doCb, undo], ...undoStack]);
+      if (!preserveRedo) {
+        setRedoStack([]);
+      }
+    } finally {
+      setLocked(false);
     }
-    setLocked(false);
   };
 
   const undo = async () => {
@@ -48,13 +55,15 @@ export function useUndoRedo(): [
     }
 
     setLocked(true);
-    let [doCb, undoCb] = undoStack[0];
+    const [doCb, undoCb] = undoStack[0];
     setUndoStack(undoStack.slice(1));
     setRedoStack([doCb, ...redoStack]);
 
-    await undoCb();
-
-    setLocked(false);
+    try {
+      await undoCb();
+    } finally {
+      setLocked(false);
+    }
   };
 
   const redo = async () => {
@@ -66,17 +75,19 @@ export function useUndoRedo(): [
       throw new Error("redo invoked with no operations to redo");
     }
 
-    let doCb = redoStack[0];
+    const doCb = redoStack[0];
 
     setRedoStack(redoStack.slice(1));
 
     return await doIt(doCb, true);
   };
 
-  const reset = () => {
+  // Stable identity (only touches the two stable setters) so callers can list
+  // `reset` in their effect/callback dep arrays without re-running every render.
+  const reset = useCallback(() => {
     setRedoStack([]);
     setUndoStack([]);
-  };
+  }, []);
 
   return [doIt, undo, redo, canUndo, canRedo, reset];
 }

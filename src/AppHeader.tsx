@@ -1,10 +1,6 @@
-import {
-  Button,
-  Menu,
-  MenuItem,
-  MenuTrigger,
-  Popover,
-} from "react-aria-components";
+import { Button, ToggleButton } from "./misc/Button";
+import { DropdownMenu, DropdownMenuItem } from "./misc/DropdownMenu";
+import type { Page } from "./keyboard/Keyboard";
 import { useConnectedDeviceData } from "./rpc/useConnectedDeviceData";
 import { useSub } from "./usePubSub";
 import { useContext, useEffect, useState } from "react";
@@ -12,24 +8,52 @@ import { useModalRef } from "./misc/useModalRef";
 import { LockStateContext } from "./rpc/LockStateContext";
 import { LockState } from "@zmkfirmware/zmk-studio-ts-client/core";
 import { ConnectionContext } from "./rpc/ConnectionContext";
-import { ChevronDown, Undo2, Redo2, Save, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Undo2,
+  Redo2,
+  Save,
+  Trash2,
+  Unplug,
+  RotateCcw,
+  Download,
+  Upload,
+  Layers,
+  Combine,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
+import type { ReactNode } from "react";
 import { Tooltip } from "./misc/Tooltip";
 import { GenericModal } from "./GenericModal";
+import { AppMenu } from "./AppMenu";
 
 export interface AppHeaderProps {
   connectedDeviceLabel?: string;
+  page?: Page;
+  onPageChange?: (page: Page) => void;
   onSave?: () => void | Promise<void>;
   onDiscard?: () => void | Promise<void>;
   onUndo?: () => Promise<void>;
   onRedo?: () => Promise<void>;
   onResetSettings?: () => void | Promise<void>;
+  onExportBackup?: () => void | Promise<void>;
+  onImportBackup?: () => void | Promise<void>;
   onDisconnect?: () => void | Promise<void>;
   canUndo?: boolean;
   canRedo?: boolean;
 }
 
+const NAV_ITEMS: { id: Page; label: string; icon: ReactNode }[] = [
+  { id: "layers", label: "Layers", icon: <Layers /> },
+  { id: "combos", label: "Combos", icon: <Combine /> },
+  { id: "behaviours", label: "Behaviors", icon: <SlidersHorizontal /> },
+];
+
 export const AppHeader = ({
   connectedDeviceLabel,
+  page,
+  onPageChange,
   canRedo,
   canUndo,
   onRedo,
@@ -38,6 +62,8 @@ export const AppHeader = ({
   onDiscard,
   onDisconnect,
   onResetSettings,
+  onExportBackup,
+  onImportBackup,
 }: AppHeaderProps) => {
   const [showSettingsReset, setShowSettingsReset] = useState(false);
 
@@ -52,23 +78,64 @@ export const AppHeader = ({
     ) {
       setShowSettingsReset(false);
     }
-  }, [lockState, showSettingsReset]);
+  }, [lockState, showSettingsReset, connectionState.conn]);
 
   const showSettingsRef = useModalRef(showSettingsReset);
-  const [unsaved, setUnsaved] = useConnectedDeviceData<boolean>(
+  const [keymapUnsaved, setKeymapUnsaved] = useConnectedDeviceData<boolean>(
     { keymap: { checkUnsavedChanges: true } },
     (r) => r.keymap?.checkUnsavedChanges
   );
 
-  useSub("rpc_notification.keymap.unsavedChangesStatusChanged", (unsaved) =>
-    setUnsaved(unsaved)
+  useSub<boolean>("rpc_notification.keymap.unsavedChangesStatusChanged", (unsaved) =>
+    setKeymapUnsaved(unsaved)
   );
 
+  // Combos share the same unsaved indicator + Save/Discard buttons as the
+  // keymap (M3). Track their unsaved state independently and OR the two.
+  const [combosUnsaved, setCombosUnsaved] = useConnectedDeviceData<boolean>(
+    { combos: { checkUnsavedChanges: true } },
+    (r) => r.combos?.checkUnsavedChanges
+  );
+
+  useSub<boolean>("rpc_notification.combos.unsavedChangesStatusChanged", (unsaved) =>
+    setCombosUnsaved(unsaved)
+  );
+
+  // Custom behaviours share the same unsaved indicator + Save/Discard buttons
+  // (M6). Track their unsaved state independently and OR it into the rest.
+  const [behaviorsUnsaved, setBehaviorsUnsaved] = useConnectedDeviceData<boolean>(
+    { behaviors: { checkUnsavedChanges: true } },
+    (r) => r.behaviors?.checkUnsavedChanges
+  );
+
+  useSub<boolean>("rpc_notification.behaviors.unsavedChangesStatusChanged", (unsaved) =>
+    setBehaviorsUnsaved(unsaved)
+  );
+
+  const unsaved = !!keymapUnsaved || !!combosUnsaved || !!behaviorsUnsaved;
+
   return (
-    <header className="top-0 left-0 right-0 grid grid-cols-[1fr_auto_1fr] items-center justify-between h-10 max-w-full">
-      <div className="flex px-3 items-center gap-1">
-        <img src="/zmk.svg" alt="ZMK Logo" className="h-8 rounded" />
-        <p>Studio</p>
+    <header className="top-0 left-0 right-0 flex items-center justify-between gap-2 h-16 max-w-full bg-base-200 border-b border-base-line">
+      <div className="flex items-center gap-3 px-3 min-w-0">
+        <div className="flex items-center gap-1">
+          <img src={`${import.meta.env.BASE_URL}zmk.svg`} alt="ZMK Logo" className="h-8 rounded" />
+          <p className="font-medium">Studio</p>
+        </div>
+        {connectedDeviceLabel && (
+          <nav aria-label="Sections" className="flex items-center gap-1">
+            {NAV_ITEMS.map(({ id, label, icon }) => (
+              <ToggleButton
+                key={id}
+                variant="ghost"
+                icon={icon}
+                isSelected={page === id}
+                onPress={() => onPageChange?.(id)}
+              >
+                {label}
+              </ToggleButton>
+            ))}
+          </nav>
+        )}
       </div>
       <GenericModal ref={showSettingsRef} className="max-w-[50vw]">
         <h2 className="my-2 text-lg">Restore Stock Settings</h2>
@@ -80,13 +147,15 @@ export const AppHeader = ({
           <p>Continue?</p>
           <div className="flex justify-end my-2 gap-3">
             <Button
-              className="rounded bg-base-200 hover:bg-base-300 px-3 py-2"
+              variant="ghost"
+              icon={<X aria-hidden />}
               onPress={() => setShowSettingsReset(false)}
             >
               Cancel
             </Button>
             <Button
-              className="rounded bg-base-200 hover:bg-base-300 px-3 py-2"
+              variant="primary"
+              icon={<RotateCcw aria-hidden />}
               onPress={() => {
                 setShowSettingsReset(false);
                 onResetSettings?.();
@@ -97,73 +166,77 @@ export const AppHeader = ({
           </div>
         </div>
       </GenericModal>
-      <MenuTrigger>
-        <Button
-          className="text-center rac-disabled:opacity-0 hover:bg-base-300 transition-all duration-100 p-1 pl-2 rounded-lg"
-          isDisabled={!connectedDeviceLabel}
-        >
-          {connectedDeviceLabel}
-          <ChevronDown className="inline-block w-4" />
-        </Button>
-        <Popover>
-          <Menu className="shadow-md rounded bg-base-100 text-base-content cursor-pointer overflow-hidden">
-            <MenuItem
-              className="px-2 py-1 hover:bg-base-200"
-              onAction={onDisconnect}
-            >
-              Disconnect
-            </MenuItem>
-            <MenuItem
-              className="px-2 py-1 hover:bg-base-200"
-              onAction={() => setShowSettingsReset(true)}
-            >
-              Restore Stock Settings
-            </MenuItem>
-          </Menu>
-        </Popover>
-      </MenuTrigger>
-      <div className="flex justify-end gap-1 px-2">
+      <div className="flex items-center justify-end gap-1 px-2">
         {onUndo && (
           <Tooltip label="Undo">
             <Button
-              className="flex items-center justify-center p-1.5 rounded enabled:hover:bg-base-300 disabled:opacity-50"
+              variant="ghost"
+              icon={<Undo2 />}
+              aria-label="Undo"
               isDisabled={!canUndo}
               onPress={onUndo}
-            >
-              <Undo2 className="inline-block w-4 mx-1" aria-label="Undo" />
-            </Button>
+            />
           </Tooltip>
         )}
 
         {onRedo && (
           <Tooltip label="Redo">
             <Button
-              className="flex items-center justify-center p-1.5 rounded enabled:hover:bg-base-300 disabled:opacity-50"
+              variant="ghost"
+              icon={<Redo2 />}
+              aria-label="Redo"
               isDisabled={!canRedo}
               onPress={onRedo}
-            >
-              <Redo2 className="inline-block w-4 mx-1" aria-label="Redo" />
-            </Button>
+            />
           </Tooltip>
         )}
         <Tooltip label="Save">
           <Button
-            className="flex items-center justify-center p-1.5 rounded enabled:hover:bg-base-300 disabled:opacity-50"
+            variant="ghost"
+            icon={<Save />}
+            aria-label="Save"
             isDisabled={!unsaved}
             onPress={onSave}
-          >
-            <Save className="inline-block w-4 mx-1" aria-label="Save" />
-          </Button>
+          />
         </Tooltip>
         <Tooltip label="Discard">
           <Button
-            className="flex items-center justify-center p-1.5 rounded enabled:hover:bg-base-300 disabled:opacity-50"
+            variant="ghost"
+            icon={<Trash2 />}
+            aria-label="Discard"
             onPress={onDiscard}
             isDisabled={!unsaved}
-          >
-            <Trash2 className="inline-block w-4 mx-1" aria-label="Discard" />
-          </Button>
+          />
         </Tooltip>
+        {connectedDeviceLabel && (
+          <DropdownMenu
+            trigger={
+              <Button variant="ghost" icon={<ChevronDown />} iconPosition="end">
+                {connectedDeviceLabel}
+              </Button>
+            }
+          >
+            <DropdownMenuItem icon={<Unplug />} onAction={onDisconnect}>
+              Disconnect
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<RotateCcw />}
+              onAction={() => setShowSettingsReset(true)}
+            >
+              Restore Stock Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={<Download />} onAction={onExportBackup}>
+              Export Backup…
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={<Upload />} onAction={onImportBackup}>
+              Import Backup…
+            </DropdownMenuItem>
+          </DropdownMenu>
+        )}
+        {/* Last, and outside the `connectedDeviceLabel` gate above: app chrome
+            belongs at the far edge, away from the keymap actions, and it's there
+            before you connect and stays after you disconnect. */}
+        <AppMenu />
       </div>
     </header>
   );

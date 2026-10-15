@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import type { RpcTransport } from "@zmkfirmware/zmk-studio-ts-client/transport/index";
 import { AvailableDevice } from ".";
@@ -13,39 +13,64 @@ export async function connect(dev: AvailableDevice): Promise<RpcTransport> {
     throw new Error("Failed to connect");
   }
 
-  let abortController = new AbortController();
+  const abortController = new AbortController();
 
-  let writable = new WritableStream({
-    async write(chunk, _controller) {
+  const writable = new WritableStream({
+    async write(chunk) {
       await invoke("transport_send_data", new Uint8Array(chunk));
     },
   });
 
-  let { writable: response_writable, readable } = new TransformStream();
+  // Enqueue from the listener synchronously — see the same comment in ble.ts. A
+  // writer-per-event drops any chunk that arrives while the previous one holds
+  // the stream locked. Serial gets off lighter (the native side reads 1024
+  // bytes at a time, so a response usually arrives as one event) but the hazard
+  // is identical, and a lost chunk kills the response stream just the same.
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  let closed = false;
+  // Explicitly initialised, and called optionally below: a disconnect landing
+  // between the two `listen` awaits would otherwise unregister a handler that
+  // doesn't exist yet.
+  let unlisten_data: UnlistenFn | undefined = undefined;
+  let unlisten_disconnected: UnlistenFn | undefined = undefined;
 
-  const unlisten_data = await listen(
+  const stop_listening = () => {
+    unlisten_data?.();
+    unlisten_disconnected?.();
+  };
+
+  const readable = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+    },
+    cancel() {
+      closed = true;
+      stop_listening();
+    },
+  });
+
+  unlisten_data = await listen(
     "connection_data",
-    async (event: { payload: Array<number> }) => {
-      let writer = response_writable.getWriter();
-      await writer.write(new Uint8Array(event.payload));
-      writer.releaseLock();
+    (event: { payload: Array<number> }) => {
+      if (!closed) {
+        controller.enqueue(new Uint8Array(event.payload));
+      }
     }
   );
 
-  const unlisten_disconnected = await listen(
-    "connection_disconnected",
-    async (_ev: any) => {
-      unlisten_data();
-      unlisten_disconnected();
-      response_writable.close();
+  unlisten_disconnected = await listen("connection_disconnected", () => {
+    if (!closed) {
+      closed = true;
+      stop_listening();
+      controller.close();
     }
-  );
+  });
 
-  let signal = abortController.signal;
+  const signal = abortController.signal;
 
-  let abort_cb = async (_reason: any) => {
-    unlisten_data();
-    unlisten_disconnected();
+  const abort_cb = async () => {
+    closed = true;
+    stop_listening();
     await invoke("transport_close");
     signal.removeEventListener("abort", abort_cb);
   };

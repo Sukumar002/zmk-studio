@@ -18,13 +18,11 @@ export type TransportFactory = {
   };
 };
 
-export interface UnlockModalProps {}
+export const UnlockModal = () => {
+  const conn = useContext(ConnectionContext);
+  const lockState = useContext(LockStateContext);
 
-export const UnlockModal = ({}: UnlockModalProps) => {
-  let conn = useContext(ConnectionContext);
-  let lockState = useContext(LockStateContext);
-
-  let open = useMemo(
+  const open = useMemo(
     () =>
       !!conn.conn && lockState != LockState.ZMK_STUDIO_CORE_LOCK_STATE_UNLOCKED,
     [conn, lockState]
@@ -32,8 +30,7 @@ export const UnlockModal = ({}: UnlockModalProps) => {
   const dialog = useModalRef(open, false, false);
 
   return (
-    <GenericModal ref={dialog}>
-      <h1 className="text-xl">Unlock To Continue</h1>
+    <GenericModal ref={dialog} title="Unlock To Continue">
       <p>
         For security reasons, your keyboard requires unlocking before using ZMK
         Studio.

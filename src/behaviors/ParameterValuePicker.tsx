@@ -1,5 +1,8 @@
+import { useMemo } from "react";
 import { BehaviorParameterValueDescription } from "@zmkfirmware/zmk-studio-ts-client/behaviors";
 import { HidUsagePicker } from "./HidUsagePicker";
+import { usagePagesFor } from "../hid-usages";
+import { Select } from "../misc/Select";
 
 export interface ParameterValuePickerProps {
   value?: number;
@@ -14,21 +17,28 @@ export const ParameterValuePicker = ({
   layers,
   onValueChanged,
 }: ParameterValuePickerProps) => {
+  // Stable identity for the HID usage pages so HidUsagePicker doesn't re-flatten
+  // the full keyboard + consumer usage tables on every render/keystroke. Hooks
+  // must run unconditionally, so compute it here even though only the hidUsage
+  // branch below consumes it.
+  const hidUsage = values[0]?.hidUsage;
+  const usagePages = useMemo(
+    () => (hidUsage ? usagePagesFor(hidUsage) : []),
+    [hidUsage]
+  );
+
   if (values.length == 0) {
     return <></>;
   } else if (values.every((v) => v.constant !== undefined)) {
     return (
-      <div>
-        <select
-          value={value}
-          className="h-8 rounded"
-          onChange={(e) => onValueChanged(parseInt(e.target.value))}
-        >
-          {values.map((v) => (
-            <option value={v.constant}>{v.name}</option>
-          ))}
-        </select>
-      </div>
+      <Select
+        aria-label="Value"
+        items={values}
+        selectedKey={value}
+        itemKey={(v) => v.constant!}
+        itemText={(v) => v.name}
+        onSelectionChange={(key) => onValueChanged(Number(key))}
+      />
     );
   } else if (values.length == 1) {
     if (values[0].range) {
@@ -50,26 +60,19 @@ export const ParameterValuePicker = ({
           onValueChanged={onValueChanged}
           label={values[0].name}
           value={value}
-          usagePages={[
-            { id: 7, min: 4, max: values[0].hidUsage.keyboardMax },
-            { id: 12, max: values[0].hidUsage.consumerMax },
-          ]}
+          usagePages={usagePages}
         />
       );
     } else if (values[0].layerId) {
       return (
-        <div>
-          <label>{values[0].name}: </label>
-          <select
-            value={value}
-            className="h-8 rounded"
-            onChange={(e) => onValueChanged(parseInt(e.target.value))}
-          >
-            {layers.map(({ name, id }) => (
-              <option value={id}>{name}</option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label={values[0].name}
+          items={layers}
+          selectedKey={value}
+          itemKey={(l) => l.id}
+          itemText={(l) => l.name}
+          onSelectionChange={(key) => onValueChanged(Number(key))}
+        />
       );
     }
   } else {

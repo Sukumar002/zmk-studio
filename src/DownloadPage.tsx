@@ -9,6 +9,7 @@ import {
 } from "@fortawesome/free-brands-svg-icons";
 import { DownloadIcon } from "lucide-react";
 import releaseData from "./data/release-data.json";
+import { Button, LinkButton } from "./misc/Button";
 
 type Platform = "windows" | "mac" | "linux" | "ios" | "android" | "unknown";
 
@@ -60,27 +61,56 @@ const DownloadLinks: Record<string, DownloadLink> = {
     name: "macOS",
     urlPattern: /.*\.dmg/,
   },
+  // Both architectures land in one release and the first matching asset wins, so
+  // these have to name the arch — otherwise an x86 visitor gets the aarch64 build.
   linux_appimage: {
     name: "Linux (AppImage)",
-    urlPattern: /.*\.AppImage/,
+    urlPattern: /.*amd64\.AppImage/,
   },
   linux_deb: {
     name: "Linux (deb)",
-    urlPattern: /.*\.deb/,
+    urlPattern: /.*amd64\.deb/,
+  },
+  linux_appimage_arm64: {
+    name: "Linux arm64 (AppImage)",
+    urlPattern: /.*aarch64\.AppImage/,
+  },
+  linux_deb_arm64: {
+    name: "Linux arm64 (deb)",
+    urlPattern: /.*arm64\.deb/,
   },
 };
 
 const PlatformLinks: Record<Platform, DownloadLink[]> = {
   windows: [DownloadLinks.windows_exe, DownloadLinks.windows_msi],
   mac: [DownloadLinks.macos],
-  linux: [DownloadLinks.linux_appimage, DownloadLinks.linux_deb],
+  linux: [
+    DownloadLinks.linux_appimage,
+    DownloadLinks.linux_deb,
+    DownloadLinks.linux_appimage_arm64,
+    DownloadLinks.linux_deb_arm64,
+  ],
   ios: [],
   android: [],
   unknown: [],
 };
 
-const ReleaseAssets = releaseData.assets.map((asset: any) => asset.browser_download_url);
-const ReleaseVersion = releaseData.tag_name;
+// Annotated rather than left to inference: release-data.json holds whatever the
+// API returned at build time, so a release caught with an empty asset list gave
+// `assets: never[]` and broke the build on the line below instead of degrading
+// the page.
+type Release = {
+  name: string | null;
+  tag_name: string;
+  assets: { browser_download_url: string }[];
+};
+
+const release: Release = releaseData;
+
+const ReleaseAssets = release.assets.map((asset) => asset.browser_download_url);
+// The rolling desktop release is tagged `latest`, which says nothing useful; its
+// title carries the version and the commit it was built from.
+const ReleaseVersion = release.name || release.tag_name;
 
 function detectPlatform(): Platform {
   if (typeof window === "undefined") return "unknown";
@@ -101,14 +131,27 @@ function getUrlFromPattern(assets: string[], pattern: RegExp) {
   return asset;
 }
 
+// release-data.json holds whatever the API returned at build time, so a platform
+// whose build failed has no matching asset. Drop those rather than render a
+// control with no `href`: as a plain `<a>` that was a dead button that still
+// looked live, and `LinkButton` degrades it to a `<span>`, which is no better.
+function availableLinks(links: DownloadLink[]): (DownloadLink & { url: string })[] {
+  return links.flatMap((link) => {
+    const url = getUrlFromPattern(ReleaseAssets, link.urlPattern);
+    return url ? [{ ...link, url }] : [];
+  });
+}
+
 export const Download = () => {
   const [platform, setPlatform] = useState<Platform>("unknown");
   const [showAll, setShowAll] = useState(false);
 
+  const platformLinks = availableLinks(PlatformLinks[platform]);
+
   useEffect(() => {
     const platform = detectPlatform();
     setPlatform(platform);
-    if (PlatformLinks[platform].length === 0) {
+    if (availableLinks(PlatformLinks[platform]).length === 0) {
       setShowAll(true);
     }
   }, []);
@@ -121,39 +164,38 @@ export const Download = () => {
         {ReleaseVersion}
       </div>
       <div className="bg-base-100 p-8 max-w-md w-full m-2 rounded-lg shadow-lg dark:shadow-xl">
-        {PlatformLinks[platform].length > 0 && (
-          <>
-            <div className="flex flex-col gap-3 mb-3">
-              {PlatformLinks[platform].map((link) => (
-                <a
-                  key={link.name}
-                  href={getUrlFromPattern(ReleaseAssets, link.urlPattern)}
-                  className="p-3 text-lg bg-primary hover:opacity-85 active:opacity-70 text-primary-content rounded-lg justify-center items-center gap-3 flex"
-                >
-                  <FontAwesomeIcon icon={PlatformMetadata[platform].icon} className="h-6"/>{" "}
-                  Download for {link.name}
-                </a>
-              ))}
-            </div>
-          </>
+        {platformLinks.length > 0 && (
+          <div className="flex flex-col gap-3 mb-3">
+            {platformLinks.map((link) => (
+              <LinkButton
+                key={link.name}
+                variant="primary"
+                href={link.url}
+                icon={<FontAwesomeIcon icon={PlatformMetadata[platform].icon} />}
+              >
+                Download for {link.name}
+              </LinkButton>
+            ))}
+          </div>
         )}
         <div className="flex flex-col gap-3">
-          {PlatformLinks[platform].length > 0 && (
-            <button
-              onClick={() => setShowAll(!showAll)}
-              className="text-primary text-left hover:underline"
+          {platformLinks.length > 0 && (
+            <Button
+              variant="link"
+              className="self-start"
+              onPress={() => setShowAll(!showAll)}
             >
               {showAll ? "Hide" : "Show"} all downloads
-            </button>
+            </Button>
           )}
           {showAll && (
             <div>
               {Object.entries(PlatformLinks).map(([platform, links]) => (
                 <div key={platform}>
-                  {links.map((link) => (
+                  {availableLinks(links).map((link) => (
                     <a
                       key={link.name}
-                      href={getUrlFromPattern(ReleaseAssets, link.urlPattern)}
+                      href={link.url}
                       className="flex gap-1 mb-3 text-base-content hover:underline"
                     >
                       <DownloadIcon className="w-5" />
@@ -168,7 +210,7 @@ export const Download = () => {
       </div>
       <a
         className="text-md hover:underline"
-        href="https://github.com/zmkfirmware/zmk-studio/releases"
+        href="https://github.com/danielsvane/zmk-studio/releases"
       >
         See GitHub Releases →
       </a>

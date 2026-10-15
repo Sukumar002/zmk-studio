@@ -7,6 +7,7 @@ interface HidLabels {
   short?: string;
   med?: string;
   long?: string;
+  icon?: string;
 }
 
 const overrides: Record<string, Record<string, HidLabels>> = HidOverrides;
@@ -44,9 +45,30 @@ export const hid_usage_get_label = (
 export const hid_usage_get_labels = (
   usage_page: number,
   usage_id: number
-): { short?: string; med?: string; long?: string } =>
+): { short?: string; med?: string; long?: string; icon?: string } =>
   overrides[usage_page.toString()]?.[usage_id.toString()] || {
     short: UsagePages.find((p) => p.Id === usage_page)?.UsageIds?.find(
       (u) => u.Id === usage_id
     )?.Name,
   };
+
+export interface HidUsagePage {
+  id: number;
+  min?: number;
+  max?: number;
+}
+
+/**
+ * The usage pages a hidUsage parameter descriptor can pick from: keyboard
+ * (page 7, ids 4..keyboardMax, plus the modifier usages) and consumer
+ * (page 12, up to consumerMax).
+ */
+export function usagePagesFor(hidUsage: {
+  keyboardMax: number;
+  consumerMax: number;
+}): HidUsagePage[] {
+  return [
+    { id: 7, min: 4, max: hidUsage.keyboardMax },
+    { id: 12, max: hidUsage.consumerMax },
+  ];
+}
