@@ -8,12 +8,24 @@ services:
       curl -L -o /tmp/protoc.zip
       https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-linux-x86_64.zip &&
       python -c "import zipfile; zipfile.ZipFile('/tmp/protoc.zip').extractall('/tmp/protoc')" &&
-      export PATH="/tmp/protoc/bin:$PATH" &&
+      chmod +x /tmp/protoc/bin/protoc &&
       git clone --depth 1 --branch main
       https://github.com/Sukumar002/zmk-studio-ts-client.git
       ../zmk-studio-ts-client &&
-      (cd ../zmk-studio-ts-client && npm ci && npm run build) &&
-      npm ci &&
+      (cd ../zmk-studio-ts-client &&
+      npm ci --ignore-scripts &&
+      git submodule update --init zmk-studio-messages &&
+      git -C zmk-studio-messages fetch origin main &&
+      git -C zmk-studio-messages checkout --detach FETCH_HEAD &&
+      /tmp/protoc/bin/protoc
+      --plugin=./node_modules/.bin/protoc-gen-ts_proto
+      --ts_proto_out=./src/
+      --ts_proto_opt=env=browser
+      --proto_path=./zmk-studio-messages/proto/zmk/
+      --experimental_allow_proto3_optional
+      ./zmk-studio-messages/proto/zmk/*.proto &&
+      npm run build) &&
+      SKIP_PROTO_GEN=1 npm ci &&
       npm run build
     staticPublishPath: ./dist
     autoDeployTrigger: commit
