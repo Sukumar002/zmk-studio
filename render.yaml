@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: custom-zmk-studio
+    runtime: static
+    branch: hana-combo-names
+    buildCommand: >-
+      rm -rf ../zmk-studio-ts-client &&
+      git clone --depth 1 --branch hana-combo-names
+      https://github.com/Sukumar002/zmk-studio-ts-client.git
+      ../zmk-studio-ts-client &&
+      (cd ../zmk-studio-ts-client && npm install) &&
+      npm ci &&
+      npm run build
+    staticPublishPath: ./dist
+    autoDeployTrigger: commit
+    envVars:
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
