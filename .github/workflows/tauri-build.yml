@@ -7,7 +7,31 @@ on:
     types: [published]
 
 jobs:
+  validate-frontend:
+    if: github.event_name != 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: "npm"
+
+      - name: install frontend dependencies
+        run: npm ci
+
+      - name: validate TypeScript and web build
+        run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zmk-studio-web-preview
+          path: dist/**
+
   publish-tauri:
+    if: github.event_name == 'release'
     permissions:
       contents: write
     strategy:
