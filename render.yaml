@@ -4,13 +4,11 @@ services:
     runtime: static
     branch: main
     buildCommand: >-
-      apt-get update &&
-      apt-get install -y protobuf-compiler &&
       rm -rf ../zmk-studio-ts-client &&
       git clone --depth 1 --branch main
       https://github.com/Sukumar002/zmk-studio-ts-client.git
       ../zmk-studio-ts-client &&
-      (cd ../zmk-studio-ts-client && npm install) &&
+      (cd ../zmk-studio-ts-client && npm ci --ignore-scripts && npm run build) &&
       npm ci &&
       npm run build
     staticPublishPath: ./dist
@@ -18,3 +16,5 @@ services:
     envVars:
       - key: SKIP_INSTALL_DEPS
         value: "true"
+      - key: SKIP_PROTO_GEN
+        value: "1"
