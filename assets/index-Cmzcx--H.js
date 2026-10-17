@@ -1,0 +1,1 @@
+import{i}from"./main-DsJLZHWX.js";import"./Button-1zgEa0aP.js";async function o(t=0){await i("plugin:process|exit",{code:t})}async function r(){await i("plugin:process|restart")}export{o as exit,r as relaunch};
