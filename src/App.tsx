@@ -44,7 +44,8 @@ import { UnlockModal } from "./UnlockModal";
 import { valueAfter } from "./misc/async";
 import { fetchBehaviorMap } from "./rpc/fetchBehaviorMap";
 import { buildBackup } from "./backup/exportBackup";
-import { downloadBackup } from "./backup/downloadBackup";
+import { downloadBackup, revealBackupInFolder } from "./backup/downloadBackup";
+import { BackupExportToast } from "./backup/BackupExportToast";
 import { parseBackup, type BackupV1 } from "./backup/backupFormat";
 import { importBackup } from "./backup/importBackup";
 import type { ImportReport } from "./backup/importReport";
@@ -247,6 +248,7 @@ function App() {
   const [doIt, undo, redo, canUndo, canRedo, reset] = useUndoRedo();
   const [page, setPage] = useState<Page>("layers");
   const [connectionAbort, setConnectionAbort] = useState(new AbortController());
+  const [exportedBackupPath, setExportedBackupPath] = useState<string | null>(null);
 
   const [lockState, setLockState] = useState<LockState>(
     LockState.ZMK_STUDIO_CORE_LOCK_STATE_LOCKED
@@ -453,9 +455,18 @@ function App() {
 
       const behaviorMap = await fetchBehaviorMap(c);
 
-      downloadBackup(
-        buildBackup({ keymap, combos, customBehaviors, behaviorMap, deviceInfo })
-      );
+      try {
+        const result = await downloadBackup(
+          buildBackup({ keymap, combos, customBehaviors, behaviorMap, deviceInfo })
+        );
+
+        if (result.kind === "desktop") {
+          setExportedBackupPath(result.path);
+        }
+      } catch (e) {
+        console.error("Backup export failed", e);
+        window.alert(`Failed to export the backup: ${e}`);
+      }
     }
 
     doExport();
@@ -690,6 +701,20 @@ function App() {
             report={importReport}
             onClose={() => setImportReport(null)}
           />
+          {exportedBackupPath && (
+            <BackupExportToast
+              path={exportedBackupPath}
+              onReveal={async () => {
+                try {
+                  await revealBackupInFolder(exportedBackupPath);
+                } catch (e) {
+                  console.error("Failed to reveal exported backup", e);
+                  window.alert(`Couldn't show the exported backup in its folder: ${e}`);
+                }
+              }}
+              onClose={() => setExportedBackupPath(null)}
+            />
+          )}
           <div className="bg-base-100 text-base-content h-full max-h-[100vh] w-full max-w-[100vw] inline-grid grid-cols-[auto] grid-rows-[auto_1fr] overflow-hidden">
             <AppHeader
               connectedDeviceLabel={connectedDeviceName}
