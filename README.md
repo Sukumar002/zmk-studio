@@ -58,6 +58,21 @@ These can also be set explicitly in a central shield/board `.conf` if desired.
 
 Runtime custom-behavior editing currently provides pre-allocated editable pools for hold-tap and sticky-key behaviors. The pool is supplied by the custom ZMK firmware; users do not need to add those runtime behavior nodes to their own keymap.
 
+### Runtime-addable layers
+
+Layer add/remove/reorder is supported by the keymap RPC when the firmware exposes spare layer slots. ZMK preallocates those slots in the keymap devicetree, so Studio cannot create an unlimited number of layers at runtime.
+
+For example, a keyboard can reserve four Studio slots with nodes such as:
+
+```dts
+studio_runtime_layer_1 { status = "reserved"; };
+studio_runtime_layer_2 { status = "reserved"; };
+studio_runtime_layer_3 { status = "reserved"; };
+studio_runtime_layer_4 { status = "reserved"; };
+```
+
+When Studio RPC is enabled, ZMK reports those as `availableLayers`. ZMK Studio Custom enables **Add layer** while at least one slot is available and shows the remaining runtime-layer capacity in the Layers sidebar. Removing a runtime layer returns that slot to the available pool.
+
 ### Mouse settings
 
 For keyboard-driven mouse support and the Mouse Settings panel, enable:
