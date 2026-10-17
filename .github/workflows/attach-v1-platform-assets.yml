@@ -1,4 +1,4 @@
-name: "Attach v1 macOS and Linux assets"
+name: "Publish ZMK Studio Custom v1.0.1"
 
 on:
   push:
@@ -8,54 +8,92 @@ on:
   workflow_dispatch:
 
 jobs:
-  attach:
+  publish:
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: write
 
     steps:
-      - name: Download macOS artifact from successful v1 build
+      - name: Checkout release source
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          run-id: 39054471789
+          run-id: 39059835299
+          name: zmk-studio-windows
+          path: artifacts/windows
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 39059835299
           name: zmk-studio-macos
           path: artifacts/macos
 
-      - name: Download Linux AMD64 artifact from successful v1 build
+      - name: Download Linux AMD64 artifact
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          run-id: 39054471789
+          run-id: 39059835299
           name: zmk-studio-linux
           path: artifacts/linux-amd64
 
-      - name: Download Linux ARM64 artifact from successful v1 build
+      - name: Download Linux ARM64 artifact
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          run-id: 39054471789
+          run-id: 39059835299
           name: zmk-studio-linux-arm64
           path: artifacts/linux-arm64
 
-      - name: Show release assets to attach
+      - name: Verify release version
         shell: bash
         run: |
-          find artifacts -type f \( -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' \) -print
+          version=$(node -p "require('./package.json').version")
+          if [ "$version" != "1.0.1" ]; then
+            echo "::error::expected package version 1.0.1, got $version"
+            exit 1
+          fi
 
-      - name: Attach macOS and Linux builds to v1.0.0
+      - name: Create v1.0.1 release and attach installers
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mapfile -d '' assets < <(find artifacts -type f \
-            \( -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' \) -print0)
-          if [ ${#assets[@]} -eq 0 ]; then
-            echo "::error::No macOS/Linux installers found in v1 build artifacts"
+          tag="v1.0.1"
+
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "ZMK Studio Custom v1.0.1" \
+              --notes-file release-notes/v1.0.1.md
+          fi
+
+          mapfile -d '' installers < <(find artifacts -type f \
+            \( -name '*.deb' -o -name '*.AppImage' -o -name '*.dmg' \
+               -o -name '*.msi' -o -name '*.exe' \) -print0)
+
+          if [ ${#installers[@]} -eq 0 ]; then
+            echo "::error::no installers found in validated v1.0.1 artifacts"
             exit 1
           fi
-          gh release upload v1.0.0 --repo "$GITHUB_REPOSITORY" --clobber "${assets[@]}"
+
+          printf 'publishing %s\n' "${installers[@]}"
+          gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber "${installers[@]}"
+
+      - name: Show published release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v1.0.1 --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,targetCommitish,url,assets
