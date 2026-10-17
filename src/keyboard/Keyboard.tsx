@@ -1370,6 +1370,7 @@ export default function Keyboard({ page }: { page: Page }) {
               onLayerClicked={setSelectedLayerIndex}
               onLayerMoved={moveLayer}
               canAdd={(keymap.availableLayers || 0) > 0}
+              availableLayers={keymap.availableLayers || 0}
               onAddClicked={addLayer}
             />
             <MouseSettingsPanel />
