@@ -1,0 +1,61 @@
+name: "Attach v1 macOS and Linux assets"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/attach-v1-platform-assets.yml"
+  workflow_dispatch:
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Download macOS artifact from successful v1 build
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 39054471789
+          name: zmk-studio-macos
+          path: artifacts/macos
+
+      - name: Download Linux AMD64 artifact from successful v1 build
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 39054471789
+          name: zmk-studio-linux
+          path: artifacts/linux-amd64
+
+      - name: Download Linux ARM64 artifact from successful v1 build
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 39054471789
+          name: zmk-studio-linux-arm64
+          path: artifacts/linux-arm64
+
+      - name: Show release assets to attach
+        shell: bash
+        run: |
+          find artifacts -type f \( -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' \) -print
+
+      - name: Attach macOS and Linux builds to v1.0.0
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mapfile -d '' assets < <(find artifacts -type f \
+            \( -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' \) -print0)
+          if [ ${#assets[@]} -eq 0 ]; then
+            echo "::error::No macOS/Linux installers found in v1 build artifacts"
+            exit 1
+          fi
+          gh release upload v1.0.0 --repo "$GITHUB_REPOSITORY" --clobber "${assets[@]}"
