@@ -6,10 +6,10 @@
     "devUrl": "http://localhost:5173",
     "frontendDist": "../dist/"
   },
-  "productName": "ZMK Studio",
+  "productName": "ZMK Studio Custom",
   "mainBinaryName": "zmk-studio",
-  "version": "0.6.0",
-  "identifier": "dev.zmk.studio",
+  "version": "1.0.0",
+  "identifier": "dev.zmk.studio.custom",
   "bundle": {
     "active": true,
     "category": "Productivity",
@@ -47,7 +47,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEwMzk4REQzMTk4NDlDN0MKUldSOG5JUVowNDA1b1BXa1o5dFFnWkdqWjdDSDhDNUFjSzVSaUsvLzgxbXdPeHV5cEE5R2lZcUMK",
       "endpoints": [
-        "https://github.com/danielsvane/zmk-studio/releases/latest/download/latest.json"
+        "https://github.com/Sukumar002/zmk-studio/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"
@@ -79,7 +79,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "ZMK Studio",
+        "title": "ZMK Studio Custom",
         "width": 800
       }
     ]
