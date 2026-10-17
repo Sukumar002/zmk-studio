@@ -1,0 +1,71 @@
+name: "Windows Standalone Installer"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Studio
+        uses: actions/checkout@v4
+        with:
+          path: zmk-studio
+
+      - name: Checkout Studio TypeScript client
+        uses: actions/checkout@v4
+        with:
+          repository: Sukumar002/zmk-studio-ts-client
+          ref: main
+          submodules: recursive
+          path: zmk-studio-ts-client
+
+      - name: Install protoc
+        run: choco install protoc -y
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: |
+            zmk-studio/package-lock.json
+            zmk-studio-ts-client/package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./zmk-studio/src-tauri -> target"
+
+      - name: Build Studio TypeScript client
+        working-directory: zmk-studio-ts-client
+        run: npm install
+
+      - name: Install Studio dependencies
+        working-directory: zmk-studio
+        run: npm ci
+
+      - name: Configure unsigned standalone Windows build
+        working-directory: zmk-studio/src-tauri
+        shell: bash
+        run: |
+          node -e "const fs=require('fs'),f='tauri.conf.json',c=JSON.parse(fs.readFileSync(f,'utf8'));delete c.bundle.windows.signCommand;c.bundle.createUpdaterArtifacts=false;fs.writeFileSync(f,JSON.stringify(c,null,2)+'\n')"
+
+      - name: Build Windows installers
+        working-directory: zmk-studio
+        run: npm run tauri build -- --bundles nsis,msi
+
+      - name: Upload standalone installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: zmk-studio-windows-standalone
+          if-no-files-found: error
+          path: |
+            zmk-studio/src-tauri/target/release/bundle/nsis/*.exe
+            zmk-studio/src-tauri/target/release/bundle/msi/*.msi
