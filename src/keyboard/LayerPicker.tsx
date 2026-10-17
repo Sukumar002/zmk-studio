@@ -23,6 +23,7 @@ interface LayerPickerProps {
   layers: Array<Layer>;
   selectedLayerIndex: number;
   canAdd?: boolean;
+  availableLayers?: number;
 
   onLayerClicked?: LayerClickCallback;
   onLayerMoved?: LayerMovedCallback;
@@ -38,6 +39,7 @@ export const LayerPicker = ({
   layers,
   selectedLayerIndex,
   canAdd,
+  availableLayers,
   onLayerClicked,
   onLayerMoved,
   onAddClicked,
@@ -117,15 +119,22 @@ export const LayerPicker = ({
           </ListBoxItem>
         )}
       </ListBox>
-      <Button
-        className="w-full justify-center"
-        variant="ghost"
-        icon={<Plus />}
-        isDisabled={!canAdd || !onAddClicked}
-        onPress={() => onAddClicked?.()}
-      >
-        Add layer
-      </Button>
+      <div>
+        <Button
+          className="w-full justify-center"
+          variant="ghost"
+          icon={<Plus />}
+          isDisabled={!canAdd || !onAddClicked}
+          onPress={() => onAddClicked?.()}
+        >
+          Add layer
+        </Button>
+        <p className="mt-1 text-xs text-base-content/50">
+          {(availableLayers ?? 0) > 0
+            ? `${availableLayers} spare layer slot${availableLayers === 1 ? "" : "s"} available`
+            : "No spare layer slots exposed by firmware."}
+        </p>
+      </div>
     </div>
   );
 };
