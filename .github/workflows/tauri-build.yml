@@ -192,7 +192,7 @@ jobs:
   # what keeps the in-app updater offering tagged releases rather than following
   # every push.
   publish-latest:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/customkeyboards'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: publish-tauri
     runs-on: ubuntu-latest
     permissions:
