@@ -68,12 +68,12 @@ CONFIG_ZMK_POINTING=y
 
 The custom Studio frontend requests the pointing-settings RPC and renders the Mouse Settings panel only when the connected firmware returns that data.
 
-That means the panel is currently dynamic based on **firmware pointing support**, not on whether the current keymap actually contains mouse bindings:
+That means the panel is dynamic based on **firmware pointing capability**:
 
 - `CONFIG_ZMK_POINTING=n` / pointing RPC unavailable → Mouse Settings is hidden.
-- `CONFIG_ZMK_POINTING=y` → Mouse Settings is shown, even if no mouse-move/scroll/button binding is currently assigned.
+- `CONFIG_ZMK_POINTING=y` / pointing RPC available → Mouse Settings is shown.
 
-A stricter “show only when the active keymap actually uses mouse behaviors” check is not implemented yet.
+The frontend intentionally uses this firmware capability signal rather than scanning the keymap for mouse bindings. This keeps visibility lightweight and remains correct even when mouse behaviors are added, removed, aliased, or placed on different layers.
 
 ## What the custom firmware adds
 
