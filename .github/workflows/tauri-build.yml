@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: Sukumar002/zmk-studio-ts-client
-          ref: hana-combo-names
+          ref: main
           submodules: recursive
           path: zmk-studio-ts-client
 
@@ -121,12 +121,13 @@ jobs:
         working-directory: zmk-studio
         run: npm ci
 
-      - name: drop the Windows signCommand (no signing credentials)
-        if: matrix.platform == 'windows-latest' && env.AZURE_SIGNING == ''
+      - name: configure unsigned build when signing credentials are absent
         working-directory: zmk-studio/src-tauri
         shell: bash
+        env:
+          UPDATER_SIGNING_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          node -e "const fs=require('fs'),f='tauri.conf.json',c=JSON.parse(fs.readFileSync(f,'utf8'));delete c.bundle.windows.signCommand;fs.writeFileSync(f,JSON.stringify(c,null,2)+'\n')"
+          node -e "const fs=require('fs'),f='tauri.conf.json',c=JSON.parse(fs.readFileSync(f,'utf8'));if(process.platform==='win32' && !process.env.AZURE_SIGNING) delete c.bundle.windows.signCommand;if(!process.env.UPDATER_SIGNING_KEY)c.bundle.createUpdaterArtifacts=false;fs.writeFileSync(f,JSON.stringify(c,null,2)+'\n')"
 
       - uses: azure/login@v2
         if: matrix.platform == 'windows-latest' && env.AZURE_SIGNING != ''
