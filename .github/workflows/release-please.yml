@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - customkeyboards
+      - main
 
 permissions: {}
 
@@ -21,7 +21,7 @@ jobs:
           # default branch, which is still upstream's `main` — 138 commits behind
           # the branch we ship from. Without it the release PR would target a
           # branch nothing is built or deployed off.
-          target-branch: customkeyboards
+          target-branch: main
           # GITHUB_TOKEN suffices because nothing downstream waits on the release
           # event. A release created with it raises no `release: published`, so
           # tauri-build attaches the installers from this same push instead — see
