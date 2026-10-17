@@ -83,6 +83,30 @@ export type Page = "layers" | "combos" | "behaviours";
 
 type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
 
+const MOUSE_BEHAVIOR_NAMES = new Set([
+  "mouse move",
+  "mouse scroll",
+  "mouse key press",
+]);
+
+function keymapUsesMouseBehaviors(
+  keymap: Keymap | undefined,
+  behaviors: BehaviorMap
+): boolean {
+  if (!keymap) {
+    return false;
+  }
+
+  return keymap.layers.some((layer) =>
+    layer.bindings.some((binding) => {
+      const displayName = behaviors[binding.behaviorId]?.displayName
+        ?.trim()
+        .toLowerCase();
+      return displayName ? MOUSE_BEHAVIOR_NAMES.has(displayName) : false;
+    })
+  );
+}
+
 // Returns the behaviour map plus a `refresh` callback. The map is fetched on
 // connect/unlock; `refresh` re-fetches it so a behaviour claimed at runtime
 // (add_custom_behavior) shows up in the binding pickers without a reconnect.
@@ -248,6 +272,10 @@ export default function Keyboard({ page }: { page: Page }) {
     number | undefined
   >(undefined);
   const [behaviors, refreshBehaviors] = useBehaviors();
+  const usesMouseBehaviors = useMemo(
+    () => keymapUsesMouseBehaviors(keymap, behaviors),
+    [keymap, behaviors]
+  );
 
   const conn = useContext(ConnectionContext);
   const undoRedo = useContext(UndoRedoContext);
@@ -1372,7 +1400,7 @@ export default function Keyboard({ page }: { page: Page }) {
               canAdd={(keymap.availableLayers || 0) > 0}
               onAddClicked={addLayer}
             />
-            <MouseSettingsPanel />
+            {usesMouseBehaviors && <MouseSettingsPanel />}
           </>
         )}
       </div>
