@@ -6,6 +6,12 @@ on:
   release:
     types: [published]
 
+# Keep only the newest branch-push build active. Tagged release runs use a
+# different ref and are not cancelled by later main-branch pushes.
+concurrency:
+  group: tauri-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
 jobs:
   publish-tauri:
     permissions:
