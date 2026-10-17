@@ -272,6 +272,19 @@ jobs:
           # `|| tagged=` and not `|| true` inside: on a missing tag gh prints the
           # error body to stdout, which would land in $tagged and get logged raw.
           tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/$tag" --jq .sha 2>/dev/null) || tagged=""
+
+          # If a matching versioned release does not exist yet, create it from
+          # the checked-in release notes only after all platform builds succeeded.
+          notes_file="release-notes/$tag.md"
+          if [ -z "$tagged" ] && [ -f "$notes_file" ]; then
+            echo "creating $tag from $GITHUB_SHA"
+            gh release create "$tag" \
+              --target "$GITHUB_SHA" \
+              --title "ZMK Studio Custom $tag" \
+              --notes-file "$notes_file"
+            tagged="$GITHUB_SHA"
+          fi
+
           if [ "$tagged" = "$GITHUB_SHA" ]; then
             echo "attaching the same installers to $tag"
             # The mac updater downloads the .app tarball, not the .dmg, so the
