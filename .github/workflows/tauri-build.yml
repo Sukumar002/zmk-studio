@@ -302,13 +302,17 @@ jobs:
             # Last, because it names the asset URLs and so needs them to exist.
             # tauri-action writes this manifest itself, but only when it is the
             # thing creating the release; on a push it only builds.
-            gh release view "$tag" \
-              --json tagName,body,publishedAt,createdAt,assets > "$RUNNER_TEMP/release.json"
-            node scripts/build-updater-manifest.js \
-              --release "$RUNNER_TEMP/release.json" \
-              --artifacts artifacts \
-              --out "$RUNNER_TEMP/latest.json"
-            gh release upload "$tag" --clobber "$RUNNER_TEMP/latest.json"
+            if find artifacts -type f -name '*.sig' -print -quit | grep -q .; then
+              gh release view "$tag" \
+                --json tagName,body,publishedAt,createdAt,assets > "$RUNNER_TEMP/release.json"
+              node scripts/build-updater-manifest.js \
+                --release "$RUNNER_TEMP/release.json" \
+                --artifacts artifacts \
+                --out "$RUNNER_TEMP/latest.json"
+              gh release upload "$tag" --clobber "$RUNNER_TEMP/latest.json"
+            else
+              echo "::warning::Updater signing key unavailable; skipping latest.json for unsigned desktop installers"
+            fi
           else
             echo "no release tag on this commit ($tag -> ${tagged:-absent}); rolling build only"
           fi
