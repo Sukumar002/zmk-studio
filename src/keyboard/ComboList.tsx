@@ -1,4 +1,5 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 
 import type { Combos } from "@zmkfirmware/zmk-studio-ts-client/combos";
@@ -14,6 +15,90 @@ import type { ComboViewMode } from "../settings/StudioSettings";
 import { hid_usage_get_labels, hid_usage_page_and_id_from_usage } from "../hid-usages";
 
 type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
+type HoverPreview = {
+  anchor: HTMLElement;
+  title: string;
+  positions: number[];
+};
+
+function ComboHoverPreview({
+  preview,
+  layoutPositions,
+}: {
+  preview: HoverPreview;
+  layoutPositions: ReturnType<typeof keyPhysicalAttrsToPositions>;
+}) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [style, setStyle] = useState<React.CSSProperties>({
+    position: "fixed",
+    visibility: "hidden",
+  });
+
+  useLayoutEffect(() => {
+    const anchor = preview.anchor;
+    const overlay = overlayRef.current;
+    if (!anchor || !overlay) return;
+
+    const update = () => {
+      const anchorRect = anchor.getBoundingClientRect();
+      const overlayRect = overlay.getBoundingClientRect();
+      const gap = 8;
+      const margin = 12;
+
+      let left = anchorRect.right + gap;
+      if (left + overlayRect.width > window.innerWidth - margin) {
+        left = Math.max(margin, anchorRect.left - gap - overlayRect.width);
+      }
+
+      let top = anchorRect.top;
+      if (top + overlayRect.height > window.innerHeight - margin) {
+        top = Math.max(margin, window.innerHeight - margin - overlayRect.height);
+      }
+      top = Math.max(margin, top);
+
+      setStyle({
+        position: "fixed",
+        left,
+        top,
+        zIndex: 1000,
+        visibility: "visible",
+      });
+    };
+
+    update();
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(anchor);
+    resizeObserver.observe(overlay);
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [preview]);
+
+  return createPortal(
+    <div
+      ref={overlayRef}
+      role="tooltip"
+      style={style}
+      className="pointer-events-none min-w-max rounded border border-base-line bg-base-100 p-3 text-base-content shadow-xl"
+    >
+      <div className="mb-2 text-xs font-medium">{preview.title}</div>
+      <PhysicalLayout
+        positions={layoutPositions}
+        oneU={12}
+        keyVariant="preview"
+        selectedPositions={preview.positions}
+      />
+    </div>,
+    document.body
+  );
+}
+
 
 export interface ComboListProps {
   combos: Combos;
@@ -72,6 +157,7 @@ export const ComboList = ({
   );
   const slotRef = useRef<HTMLDivElement>(null);
   const [oneU, setOneU] = useState(11);
+  const [hoverPreview, setHoverPreview] = useState<HoverPreview | null>(null);
   useLayoutEffect(() => {
     const el = slotRef.current;
     if (!el || !columns) return;
@@ -175,71 +261,80 @@ export const ComboList = ({
                   const displayName = combo?.name?.trim() || configuredKeys;
                   const selected = entry.index === selectedIndex;
 
-                  const card = (
-                    <SidebarCard
-                      selected={selected}
-                      onSelect={() => onComboSelected?.(entry.index)}
-                      className={viewMode === "list" ? "group relative overflow-visible" : undefined}
+                  return (
+                    <li
+                      key={entry.index}
+                      onMouseEnter={(event) => {
+                        if (viewMode === "list" && previewPositions) {
+                          setHoverPreview({
+                            anchor: event.currentTarget,
+                            title: displayName,
+                            positions,
+                          });
+                        }
+                      }}
+                      onMouseLeave={() => setHoverPreview(null)}
+                      onFocusCapture={(event) => {
+                        if (viewMode === "list" && previewPositions) {
+                          setHoverPreview({
+                            anchor: event.currentTarget,
+                            title: displayName,
+                            positions,
+                          });
+                        }
+                      }}
+                      onBlurCapture={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                          setHoverPreview(null);
+                        }
+                      }}
                     >
-                      <div className="flex flex-col gap-0.5">
-                        <span className="truncate text-base font-medium">
-                          {displayName}
-                        </span>
-                        {viewMode === "expanded" ? (
-                          <>
-                            <span className="truncate text-sm opacity-60">
-                              {combo?.name?.trim() ? behaviorName : "Combo #" + entry.index}
-                            </span>
-                            {binding ? (
-                              <span className="inline-flex text-base opacity-70 [&_svg]:size-4">
-                                <HidUsageLabel hid_usage={binding.param1} verbose />
-                              </span>
-                            ) : null}
-                          </>
-                        ) : combo?.name?.trim() ? (
-                          <span className="truncate text-xs opacity-60">
-                            {configuredKeys}
-                          </span>
-                        ) : null}
-                      </div>
-                      {viewMode === "expanded" &&
-                        (previewPositions ? (
-                          <div
-                            ref={entry === combos.combos[0] ? slotRef : undefined}
-                            className="mt-1.5 flex justify-start"
-                          >
-                            <PhysicalLayout
-                              positions={previewPositions}
-                              oneU={oneU}
-                              keyVariant="preview"
-                              selectedPositions={positions}
-                            />
-                          </div>
-                        ) : (
-                          <div className="mt-1 font-mono text-xs opacity-60">
-                            {positions.join(", ") || "no keys"}
-                          </div>
-                        ))}
-                      {viewMode === "list" && previewPositions ? (
-                        <div
-                          role="tooltip"
-                          className="pointer-events-none absolute left-[calc(100%+0.5rem)] top-0 z-50 hidden min-w-max rounded border border-base-line bg-base-100 p-3 text-base-content shadow-xl group-hover:block group-focus-visible:block"
-                        >
-                          <div className="mb-2 text-xs font-medium">
+                      <SidebarCard
+                        selected={selected}
+                        onSelect={() => onComboSelected?.(entry.index)}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <span className="truncate text-base font-medium">
                             {displayName}
-                          </div>
-                          <PhysicalLayout
-                            positions={previewPositions}
-                            oneU={12}
-                            keyVariant="preview"
-                            selectedPositions={positions}
-                          />
+                          </span>
+                          {viewMode === "expanded" ? (
+                            <>
+                              <span className="truncate text-sm opacity-60">
+                                {combo?.name?.trim() ? behaviorName : "Combo #" + entry.index}
+                              </span>
+                              {binding ? (
+                                <span className="inline-flex text-base opacity-70 [&_svg]:size-4">
+                                  <HidUsageLabel hid_usage={binding.param1} verbose />
+                                </span>
+                              ) : null}
+                            </>
+                          ) : combo?.name?.trim() ? (
+                            <span className="truncate text-xs opacity-60">
+                              {configuredKeys}
+                            </span>
+                          ) : null}
                         </div>
-                      ) : null}
-                    </SidebarCard>
+                        {viewMode === "expanded" &&
+                          (previewPositions ? (
+                            <div
+                              ref={entry === combos.combos[0] ? slotRef : undefined}
+                              className="mt-1.5 flex justify-start"
+                            >
+                              <PhysicalLayout
+                                positions={previewPositions}
+                                oneU={oneU}
+                                keyVariant="preview"
+                                selectedPositions={positions}
+                              />
+                            </div>
+                          ) : (
+                            <div className="mt-1 font-mono text-xs opacity-60">
+                              {positions.join(", ") || "no keys"}
+                            </div>
+                          ))}
+                      </SidebarCard>
+                    </li>
                   );
-
-                  return React.cloneElement(card, { key: entry.index });
                 })}
               </ul>
             </li>
@@ -257,6 +352,12 @@ export const ComboList = ({
           )}
         </ul>
       )}
+      {viewMode === "list" && previewPositions && hoverPreview ? (
+        <ComboHoverPreview
+          preview={hoverPreview}
+          layoutPositions={previewPositions}
+        />
+      ) : null}
       <Button
         className="w-full justify-center"
         variant="ghost"
