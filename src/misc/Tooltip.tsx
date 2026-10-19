@@ -8,7 +8,7 @@ import { tooltipSurface } from "./controlStyles";
 export interface TooltipProps
   extends Omit<TooltipTriggerComponentProps, "children"> {
   children: React.ReactNode;
-  label: React.ReactNode;
+  label: string;
   /**
    * Which side of the trigger the bubble hangs off. Defaults to `top`, which
    * suits a toolbar icon; pass `bottom` when the space above is content the
