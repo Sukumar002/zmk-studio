@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 
 import type { Combos } from "@zmkfirmware/zmk-studio-ts-client/combos";
 import type { GetBehaviorDetailsResponse } from "@zmkfirmware/zmk-studio-ts-client/behaviors";
-import type { KeyPhysicalAttrs } from "@zmkfirmware/zmk-studio-ts-client/keymap";
+import type { BehaviorBinding, KeyPhysicalAttrs } from "@zmkfirmware/zmk-studio-ts-client/keymap";
 
 import { HidUsageLabel } from "./HidUsageLabel";
 import { PhysicalLayout } from "./PhysicalLayout";
@@ -12,6 +12,7 @@ import { Button } from "../misc/Button";
 import { SidebarCard } from "../misc/SidebarCard";
 import { Tooltip } from "../misc/Tooltip";
 import type { ComboViewMode } from "../settings/StudioSettings";
+import { hid_usage_get_labels, hid_usage_page_and_id_from_usage } from "../hid-usages";
 
 type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
 
@@ -22,6 +23,8 @@ export interface ComboListProps {
   /** Physical-layout keys for the mini keyboard preview; array index is the key
    * position. When absent the preview falls back to a plain list of positions. */
   layoutKeys?: KeyPhysicalAttrs[];
+  /** Base-layer bindings used to label combo positions in compact list mode. */
+  baseBindings?: BehaviorBinding[];
   selectedIndex?: number;
   onComboSelected?: (index: number) => void;
   onAddCombo?: () => void;
@@ -41,6 +44,7 @@ export const ComboList = ({
   behaviors,
   layers,
   layoutKeys,
+  baseBindings,
   selectedIndex,
   onComboSelected,
   onAddCombo,
@@ -80,6 +84,27 @@ export const ComboList = ({
     ro.observe(el);
     return () => ro.disconnect();
   }, [columns]);
+
+  const keyLabel = (position: number) => {
+    const binding = baseBindings?.[position];
+    if (!binding) return `#${position}`;
+
+    const behaviorName =
+      behaviors[binding.behaviorId]?.displayName || `#${position}`;
+
+    if (/key[ -]?press/i.test(behaviorName) && binding.param1 !== undefined) {
+      const [pageRaw, id] = hid_usage_page_and_id_from_usage(binding.param1);
+      const labels = hid_usage_get_labels(pageRaw & 0xff, id);
+      return (
+        labels.long ||
+        labels.med ||
+        labels.short ||
+        `#${position}`
+      ).replace(/^Keyboard /, "");
+    }
+
+    return behaviorName;
+  };
 
   const groupedCombos = useMemo(() => {
     const groups = new Map<string, typeof combos.combos>();
@@ -146,7 +171,7 @@ export const ComboList = ({
                   const positions = combo?.keyPositions || [];
                   const configuredKeys =
                     positions.length > 0
-                      ? `Keys ${positions.join(" + ")}`
+                      ? positions.map(keyLabel).join(" + ")
                       : "No keys configured";
                   const displayName = combo?.name?.trim() || configuredKeys;
                   const selected = entry.index === selectedIndex;
