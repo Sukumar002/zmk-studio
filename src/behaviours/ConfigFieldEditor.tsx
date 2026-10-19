@@ -117,52 +117,91 @@ function fieldInfo(field: ConfigField, help?: FieldHelp) {
   ) : undefined;
 }
 
-/** Editable number input for an int-range field; commits on blur / Enter. */
+/** Editable integer tuning control: slider for fast adjustment + exact text input. */
 function IntField({ field, onCommit, help }: ConfigFieldEditProps) {
   const current = field.value?.intValue ?? 0;
-  const min = field.schema?.intRange?.min;
-  const max = field.schema?.intRange?.max;
+  const min = field.schema?.intRange?.min ?? 0;
+  const max = field.schema?.intRange?.max ?? Math.max(1000, current);
   const [text, setText] = useState(String(current));
+  const [sliderValue, setSliderValue] = useState(current);
 
-  // Re-sync when the value changes externally (undo/redo, reload). We only
-  // commit on blur, so `current` is stable while the user types and this won't
-  // clobber in-progress input.
   useEffect(() => {
     setText(String(current));
+    setSliderValue(current);
   }, [current]);
 
-  const commit = () => {
-    const parsed = parseInt(text, 10);
-    if (Number.isNaN(parsed)) {
-      setText(String(current)); // revert invalid input
-      return;
-    }
-    let clamped = parsed;
-    if (min !== undefined) clamped = Math.max(min, clamped);
-    if (max !== undefined) clamped = Math.min(max, clamped);
-    if (clamped !== parsed) setText(String(clamped));
+  const clamp = (value: number) => Math.min(max, Math.max(min, value));
+
+  const commitValue = (value: number) => {
+    const clamped = clamp(value);
+    setText(String(clamped));
+    setSliderValue(clamped);
     if (clamped !== current) onCommit({ intValue: clamped });
   };
 
+  const commitText = () => {
+    const parsed = parseInt(text, 10);
+    if (Number.isNaN(parsed)) {
+      setText(String(current));
+      setSliderValue(current);
+      return;
+    }
+    commitValue(parsed);
+  };
+
   return (
-    <TextField
-      label={field.displayName || field.key}
-      info={fieldInfo(field, help)}
-      description={renderSchemaHint(field)}
-      type="number"
-      inputClassName="max-w-[10rem]"
-      value={text}
-      onChange={setText}
-      inputProps={{
-        min,
-        max,
-        inputMode: "numeric",
-        onBlur: commit,
-        onKeyDown: (e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-        },
-      }}
-    />
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-1">
+        <FieldLabel>{field.displayName || field.key}</FieldLabel>
+        {fieldInfo(field, help)}
+      </div>
+      <div className="flex max-w-xl items-center gap-3">
+        <input
+          className="range range-sm min-w-0 flex-1"
+          type="range"
+          min={min}
+          max={max}
+          step={1}
+          value={sliderValue}
+          aria-label={field.displayName || field.key}
+          onChange={(e) => {
+            const value = Number(e.target.value);
+            setSliderValue(value);
+            setText(String(value));
+          }}
+          onPointerUp={() => commitValue(sliderValue)}
+          onKeyUp={(e) => {
+            if (
+              e.key === "ArrowLeft" ||
+              e.key === "ArrowRight" ||
+              e.key === "ArrowUp" ||
+              e.key === "ArrowDown" ||
+              e.key === "Home" ||
+              e.key === "End"
+            ) {
+              commitValue(sliderValue);
+            }
+          }}
+        />
+        <input
+          className="input input-bordered input-sm w-24 bg-base-100 text-right"
+          type="number"
+          min={min}
+          max={max}
+          inputMode="numeric"
+          value={text}
+          aria-label={`${field.displayName || field.key} exact value`}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commitText}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+        />
+      </div>
+      <span className="text-xs text-base-content/60">
+        {min}–{max}
+      </span>
+    </div>
   );
 }
 
