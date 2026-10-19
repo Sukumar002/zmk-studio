@@ -37,7 +37,7 @@ import { LayerToolbar } from "./LayerToolbar";
 // Layout picker temporarily hidden — not needed for now.
 // import { PhysicalLayoutPicker } from "./PhysicalLayoutPicker";
 import { Keymap as KeymapComp } from "./Keymap";
-import { ComboList } from "./ComboList";
+import { ComboList, type ComboViewMode } from "./ComboList";
 import { ComboEditor } from "../combos/ComboEditor";
 import { useConnectedDeviceData } from "../rpc/useConnectedDeviceData";
 import { fetchBehaviorMap } from "../rpc/fetchBehaviorMap";
@@ -51,7 +51,7 @@ import { ErrorMessage } from "../misc/Field";
 import { BehaviourList } from "../behaviours/BehaviourList";
 import { BehaviourEditor } from "../behaviours/BehaviourEditor";
 import { defaultBehaviourName } from "../behaviours/behaviourNames";
-import { StudioSettings, type ComboViewMode } from "../settings/StudioSettings";
+import { StudioSettings } from "../settings/StudioSettings";
 
 // The left sidebar (master list) on every editor page — Layers, Combos,
 // Behaviours. A fixed `w-72` so all three pages line up exactly; their `auto`
@@ -236,7 +236,7 @@ export default function Keyboard({ page }: { page: Page }) {
 
   const [comboViewMode, setComboViewMode] = useState<ComboViewMode>(() => {
     const stored = window.localStorage.getItem("zmk-studio.combo-view");
-    return stored === "list" ? "list" : "expanded";
+    return stored === "compact" || stored === "list" ? "compact" : "expanded";
   });
 
   useEffect(() => {
@@ -1208,8 +1208,6 @@ export default function Keyboard({ page }: { page: Page }) {
   if (page === "settings") {
     return (
       <StudioSettings
-        comboViewMode={comboViewMode}
-        onComboViewModeChange={setComboViewMode}
         behaviours={customBehaviors?.behaviors ?? []}
         onApplyBehaviourField={doApplyConfigField}
       />
@@ -1324,6 +1322,7 @@ export default function Keyboard({ page }: { page: Page }) {
               draftSelected={draftCombo !== null}
               canAdd={Object.keys(behaviors).length > 0}
               viewMode={comboViewMode}
+              onViewModeChange={setComboViewMode}
             />
           )}
         </div>
