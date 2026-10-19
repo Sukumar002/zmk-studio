@@ -1,28 +1,10 @@
 import type { ConfigValue, CustomBehavior } from "@zmkfirmware/zmk-studio-ts-client/behaviors";
 
 import { MouseSettingsPanel } from "../keyboard/MouseSettingsPanel";
-import { Select } from "../misc/Select";
 import { ConfigFieldEdit } from "../behaviours/ConfigFieldEditor";
 import { fieldHelp } from "../behaviours/fieldHelp";
 
-export type ComboViewMode = "expanded" | "list";
-
-const COMBO_VIEW_OPTIONS = [
-  {
-    id: "expanded" as const,
-    name: "Expanded",
-    description: "Show the physical layout preview inside every combo row.",
-  },
-  {
-    id: "list" as const,
-    name: "List",
-    description: "Use compact rows and show the physical layout on hover.",
-  },
-];
-
 export interface StudioSettingsProps {
-  comboViewMode: ComboViewMode;
-  onComboViewModeChange: (mode: ComboViewMode) => void;
   behaviours?: CustomBehavior[];
   onApplyBehaviourField?: (
     behaviorId: number,
@@ -33,8 +15,6 @@ export interface StudioSettingsProps {
 }
 
 export function StudioSettings({
-  comboViewMode,
-  onComboViewModeChange,
   behaviours = [],
   onApplyBehaviourField,
 }: StudioSettingsProps) {
@@ -48,33 +28,6 @@ export function StudioSettings({
             connected keyboard.
           </p>
         </div>
-
-        <section className="rounded-lg border border-base-line bg-base-200 p-5">
-          <h2 className="text-sm font-bold uppercase opacity-70">Studio</h2>
-          <div className="mt-4">
-            <Select
-              items={COMBO_VIEW_OPTIONS}
-              label="Combos view"
-              description="Expanded is the default. List keeps the sidebar compact and moves the layout preview to hover."
-              selectedKey={comboViewMode}
-              onSelectionChange={(key) => {
-                if (key === "expanded" || key === "list") {
-                  onComboViewModeChange(key);
-                }
-              }}
-              renderItem={(item) => (
-                <span className="flex min-w-0 flex-col">
-                  <span>{item.name}</span>
-                  <span className="truncate text-xs opacity-60">
-                    {item.description}
-                  </span>
-                </span>
-              )}
-              renderValue={(item) => item.name}
-              triggerClassName="w-full max-w-sm"
-            />
-          </div>
-        </section>
 
         <section className="rounded-lg border border-base-line bg-base-200 p-5">
           <h2 className="text-sm font-bold uppercase opacity-70">
