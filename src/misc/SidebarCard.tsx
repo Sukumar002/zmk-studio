@@ -6,6 +6,7 @@ export interface SidebarCardProps {
   /** Highlights the row as the one whose detail is open in the editor. */
   selected?: boolean;
   onSelect?: () => void;
+  className?: string;
   children: ReactNode;
 }
 
@@ -15,7 +16,7 @@ export interface SidebarCardProps {
 // primary text when selected to mark the row whose detail is open in the editor.
 // Deliberately not a filled/bordered tile — that read as a Select input. Shared
 // so both lists stay identical; wrap each row's content as the children.
-export function SidebarCard({ selected, onSelect, children }: SidebarCardProps) {
+export function SidebarCard({ selected, onSelect, className, children }: SidebarCardProps) {
   return (
     <li>
       <button
@@ -27,6 +28,7 @@ export function SidebarCard({ selected, onSelect, children }: SidebarCardProps) 
           "block w-full",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
           selected ? selectableCard.selected : selectableCard.resting,
+          className,
         )}
       >
         {children}
