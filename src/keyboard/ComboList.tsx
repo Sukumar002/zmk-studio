@@ -31,12 +31,14 @@ function hidLabel(value: number): string {
     .replace(/^Keyboard /, "");
 }
 
+type ActionToken = { label: string; kind: "plain" | "layer" };
+
 function bindingSummary(
   binding: BehaviorBinding | undefined,
   behavior: GetBehaviorDetailsResponse | undefined,
   layers: { id: number; name: string }[]
-): string {
-  if (!binding) return "No action";
+): ActionToken[] {
+  if (!binding) return [{ label: "No action", kind: "plain" }];
 
   const layerIds = layers.map((layer) => layer.id);
   const metadata = behavior?.metadata ?? [];
@@ -52,10 +54,13 @@ function bindingSummary(
     if (value === undefined) return undefined;
     const descriptor = matchDescriptor(layerIds, value, descriptors);
     if (descriptor?.layerId) {
-      return layers.find((layer) => layer.id === value)?.name ?? `Layer ${value}`;
+      return {
+        label: layers.find((layer) => layer.id === value)?.name ?? `Layer ${value}`,
+        kind: "layer" as const,
+      };
     }
     if (descriptor?.hidUsage || value !== 0) {
-      return hidLabel(value);
+      return { label: hidLabel(value), kind: "plain" as const };
     }
     return undefined;
   };
@@ -64,10 +69,10 @@ function bindingSummary(
   const tap = describe(binding.param2, set?.param2);
   const hold = describe(binding.param1, set?.param1);
 
-  if (tap && hold) return `${tap} / ${hold}`;
-  if (tap || hold) return tap || hold || behavior?.displayName || "Action";
+  if (tap && hold) return [tap, hold];
+  if (tap || hold) return [tap || hold!];
 
-  return behavior?.displayName || "Action";
+  return [{ label: behavior?.displayName || "Action", kind: "plain" }];
 }
 
 function CompactComboSummary({
@@ -76,7 +81,7 @@ function CompactComboSummary({
   showAction,
 }: {
   trigger: string;
-  action: string;
+  action: ActionToken[];
   showAction: boolean;
 }) {
   return (
@@ -90,12 +95,23 @@ function CompactComboSummary({
         {trigger}
       </span>
       <span
-        className={`absolute inset-0 truncate transition-opacity duration-300 ${
+        className={`absolute inset-0 flex min-w-0 items-center gap-1 truncate transition-opacity duration-300 ${
           showAction ? "opacity-100" : "opacity-0"
         }`}
         aria-hidden={!showAction}
       >
-        {action}
+        {action.map((token, index) => (
+          <span key={`${token.kind}-${token.label}-${index}`} className="contents">
+            {index > 0 ? <span className="opacity-60">/</span> : null}
+            {token.kind === "layer" ? (
+              <span className="inline-flex max-w-full items-center rounded-full border border-base-line bg-base-200 px-1.5 py-0.5 text-[0.68rem] font-medium leading-none text-base-content/80">
+                <span className="truncate">{token.label}</span>
+              </span>
+            ) : (
+              <span className="truncate">{token.label}</span>
+            )}
+          </span>
+        ))}
       </span>
     </div>
   );
