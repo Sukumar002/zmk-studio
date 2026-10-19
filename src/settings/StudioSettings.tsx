@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ConfigValue, CustomBehavior } from "@zmkfirmware/zmk-studio-ts-client/behaviors";
 
 import { MouseSettingsPanel } from "../keyboard/MouseSettingsPanel";
@@ -6,6 +7,7 @@ import { fieldHelp } from "../behaviours/fieldHelp";
 
 export interface StudioSettingsProps {
   behaviours?: CustomBehavior[];
+  behavioursLoaded?: boolean;
   onApplyBehaviourField?: (
     behaviorId: number,
     fieldKey: string,
@@ -16,8 +18,21 @@ export interface StudioSettingsProps {
 
 export function StudioSettings({
   behaviours = [],
+  behavioursLoaded = true,
   onApplyBehaviourField,
 }: StudioSettingsProps) {
+  const [mouseSettingsAvailable, setMouseSettingsAvailable] = useState<
+    boolean | undefined
+  >(undefined);
+
+  const hasBehaviourTuning = behaviours.some((behaviour) =>
+    behaviour.config.some((field) => !field.schema?.positions)
+  );
+  const capabilitiesLoaded =
+    behavioursLoaded && mouseSettingsAvailable !== undefined;
+  const isEmpty =
+    capabilitiesLoaded && !hasBehaviourTuning && !mouseSettingsAvailable;
+
   return (
     <div className="h-full overflow-y-auto bg-base-300 px-6 py-6">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 pb-8">
@@ -25,9 +40,7 @@ export function StudioSettings({
           <h1 className="text-xl font-semibold">Settings</h1>
         </div>
 
-        {behaviours.some((behaviour) =>
-          behaviour.config.some((field) => !field.schema?.positions)
-        ) ? (
+        {hasBehaviourTuning ? (
           <section className="rounded-lg border border-base-line bg-base-200 p-5">
             <h2 className="text-sm font-bold uppercase opacity-70">
               Behavior tuning
@@ -72,7 +85,22 @@ export function StudioSettings({
           </section>
         ) : null}
 
-        <MouseSettingsPanel variant="settings" />
+        <MouseSettingsPanel
+          variant="settings"
+          onAvailabilityChange={setMouseSettingsAvailable}
+        />
+
+        {isEmpty ? (
+          <div className="grid flex-1 place-items-center py-16 text-center">
+            <div>
+              <h2 className="text-lg font-medium">Nothing to tune here yet</h2>
+              <p className="mt-2 text-sm text-base-content/60">
+                Your keyboard firmware doesn’t currently support changing these
+                settings in real time.
+              </p>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
