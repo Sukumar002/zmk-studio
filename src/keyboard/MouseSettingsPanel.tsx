@@ -7,13 +7,20 @@ import { ConnectionContext } from "../rpc/ConnectionContext";
 
 const ACCEL_LABELS = ["Off", "Gentle", "Normal", "Fast"];
 
-export function MouseSettingsPanel({ variant = "sidebar" }: { variant?: "sidebar" | "settings" }) {
+export function MouseSettingsPanel({
+  variant = "sidebar",
+  onAvailabilityChange,
+}: {
+  variant?: "sidebar" | "settings";
+  onAvailabilityChange?: (available: boolean | undefined) => void;
+}) {
   const connection = useContext(ConnectionContext);
-  const [deviceSettings, setDeviceSettings] = useConnectedDeviceData<MouseSettings>(
-    { pointing: { getSettings: true } },
-    (resp) => resp?.pointing?.getSettings,
-    true
-  );
+  const [deviceSettings, setDeviceSettings, deviceSettingsError] =
+    useConnectedDeviceData<MouseSettings>(
+      { pointing: { getSettings: true } },
+      (resp) => resp?.pointing?.getSettings,
+      true
+    );
 
   const [moveSpeed, setMoveSpeed] = useState(600);
   const [scrollSpeed, setScrollSpeed] = useState(10);
@@ -26,6 +33,16 @@ export function MouseSettingsPanel({ variant = "sidebar" }: { variant?: "sidebar
     setScrollSpeed(deviceSettings.scrollSpeed || 10);
     setAcceleration(deviceSettings.acceleration ?? 1);
   }, [deviceSettings]);
+
+  useEffect(() => {
+    if (deviceSettings) {
+      onAvailabilityChange?.(true);
+    } else if (deviceSettingsError) {
+      onAvailabilityChange?.(false);
+    } else {
+      onAvailabilityChange?.(undefined);
+    }
+  }, [deviceSettings, deviceSettingsError, onAvailabilityChange]);
 
   const apply = async () => {
     if (!connection.conn) return;
