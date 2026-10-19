@@ -7,7 +7,7 @@ import { ConnectionContext } from "../rpc/ConnectionContext";
 
 const ACCEL_LABELS = ["Off", "Gentle", "Normal", "Fast"];
 
-export function MouseSettingsPanel() {
+export function MouseSettingsPanel({ variant = "sidebar" }: { variant?: "sidebar" | "settings" }) {
   const connection = useContext(ConnectionContext);
   const [deviceSettings, setDeviceSettings] = useConnectedDeviceData<MouseSettings>(
     { pointing: { getSettings: true } },
@@ -50,8 +50,8 @@ export function MouseSettingsPanel() {
   if (!deviceSettings) return null;
 
   return (
-    <div className="mt-4 rounded-lg border border-base-line bg-base-100 p-3">
-      <div className="mb-3 text-sm font-semibold">Mouse Settings</div>
+    <div className={variant === "settings" ? "rounded-lg border border-base-line bg-base-200 p-5" : "mt-4 rounded-lg border border-base-line bg-base-100 p-3"}>
+      <div className="mb-3 text-sm font-semibold">{variant === "settings" ? "Mouse settings" : "Mouse Settings"}</div>
 
       <label className="mb-3 block text-xs">
         <div className="mb-1 flex justify-between">
