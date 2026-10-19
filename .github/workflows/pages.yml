@@ -55,6 +55,7 @@ jobs:
         working-directory: zmk-studio
         env:
           VITE_BASE: /zmk-studio/
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build
 
       - name: Publish clean dist to gh-pages branch
