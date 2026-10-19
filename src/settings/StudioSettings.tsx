@@ -1,4 +1,3 @@
-import type { Key } from "react-aria-components";
 import type { ConfigValue, CustomBehavior } from "@zmkfirmware/zmk-studio-ts-client/behaviors";
 
 import { MouseSettingsPanel } from "../keyboard/MouseSettingsPanel";
@@ -58,7 +57,7 @@ export function StudioSettings({
               label="Combos view"
               description="Expanded is the default. List keeps the sidebar compact and moves the layout preview to hover."
               selectedKey={comboViewMode}
-              onSelectionChange={(key: Key) => {
+              onSelectionChange={(key) => {
                 if (key === "expanded" || key === "list") {
                   onComboViewModeChange(key);
                 }
