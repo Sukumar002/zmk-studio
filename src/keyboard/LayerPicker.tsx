@@ -10,6 +10,7 @@ import {
 
 import { Button } from "../misc/Button";
 import { controlFocusRing, cx, selectableCard } from "../misc/controlStyles";
+import { LayerToolbar } from "./LayerToolbar";
 
 interface Layer {
   id: number;
@@ -28,13 +29,14 @@ interface LayerPickerProps {
   onLayerClicked?: LayerClickCallback;
   onLayerMoved?: LayerMovedCallback;
   onAddClicked?: () => void | Promise<void>;
+  onRenameLayer?: (index: number, name: string) => void;
+  onDeleteLayer?: (index: number) => void;
 }
 
 // Layer list. Mirrors the Combos/Behaviours sidebars: a plain title, a
-// full-width Add button, and selectable cards (shared `selectableCard` surface +
-// drill-in chevron). Renaming and deleting the selected layer live in the
-// keyboard area (see LayerToolbar), so the sidebar is purely selection + reorder
-// — drag a card to move that layer.
+// full-width Add button, and selectable cards. Rename/delete actions live on
+// each layer row and reveal on hover/focus while their reserved width keeps the
+// layer label stable. Drag a card to move that layer.
 export const LayerPicker = ({
   layers,
   selectedLayerIndex,
@@ -43,6 +45,8 @@ export const LayerPicker = ({
   onLayerClicked,
   onLayerMoved,
   onAddClicked,
+  onRenameLayer,
+  onDeleteLayer,
   ...props
 }: LayerPickerProps) => {
   const layer_items = useMemo(() => {
@@ -107,15 +111,23 @@ export const LayerPicker = ({
             className={({ isSelected }) =>
               cx(
                 selectableCard.base,
-                "block",
+                "group flex items-center justify-between gap-2",
                 controlFocusRing,
                 isSelected ? selectableCard.selected : selectableCard.resting
               )
             }
           >
-            <span className="block truncate text-base font-medium">
+            <span className="min-w-0 flex-1 truncate text-base font-medium">
               {layer_item.name}
             </span>
+            <LayerToolbar
+              name={layers[layer_item.index]?.name ?? ""}
+              placeholder={layer_item.index.toString()}
+              canDelete={layers.length > 1}
+              className="w-16 justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+              onRename={(name) => onRenameLayer?.(layer_item.index, name)}
+              onDelete={() => onDeleteLayer?.(layer_item.index)}
+            />
           </ListBoxItem>
         )}
       </ListBox>
