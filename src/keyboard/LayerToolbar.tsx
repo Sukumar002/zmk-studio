@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cx } from "../misc/controlStyles";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 
 import { GenericModal } from "../GenericModal";
@@ -17,6 +18,7 @@ export interface LayerToolbarProps {
   onDelete: () => void;
   /** False when only one layer remains (the last layer can't be deleted). */
   canDelete?: boolean;
+  className?: string;
 }
 
 // Controls for the *selected* layer, anchored to the top-left corner of the
@@ -30,6 +32,7 @@ export function LayerToolbar({
   onRename,
   onDelete,
   canDelete,
+  className,
 }: LayerToolbarProps) {
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -37,12 +40,13 @@ export function LayerToolbar({
   const displayName = name.trim() || placeholder;
 
   return (
-    <div className="absolute left-0 top-0 flex items-center gap-1 p-2">
+    <div className={cx("flex shrink-0 items-center gap-1", className)}>
       <Button
         variant="ghost"
         size="sm"
         icon={<Pencil aria-hidden />}
         aria-label="Rename layer"
+        className="!h-7 !w-7 !p-0"
         onPress={() => setRenaming(true)}
       />
       <Button
@@ -51,6 +55,7 @@ export function LayerToolbar({
         icon={<Trash2 aria-hidden />}
         aria-label="Delete layer"
         isDisabled={!canDelete}
+        className="!h-7 !w-7 !p-0"
         onPress={() => setDeleting(true)}
       />
       <RenameLayerModal
