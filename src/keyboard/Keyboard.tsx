@@ -33,7 +33,6 @@ import {
 } from "@zmkfirmware/zmk-studio-ts-client/combos";
 
 import { LayerPicker } from "./LayerPicker";
-import { LayerToolbar } from "./LayerToolbar";
 // Layout picker temporarily hidden — not needed for now.
 // import { PhysicalLayoutPicker } from "./PhysicalLayoutPicker";
 import { Keymap as KeymapComp } from "./Keymap";
@@ -1089,7 +1088,7 @@ export default function Keyboard({ page }: { page: Page }) {
     });
   }, [conn, undoRedo, keymap, setKeymap]);
 
-  const removeLayer = useCallback(() => {
+  const removeLayer = useCallback((targetIndex?: number) => {
     async function doRemove(layerIndex: number): Promise<void> {
       if (!conn.conn || !keymap) {
         throw new Error("Not connected");
@@ -1147,11 +1146,22 @@ export default function Keyboard({ page }: { page: Page }) {
       throw new Error("No keymap loaded");
     }
 
-    const index = selectedLayerIndex;
+    const index = targetIndex ?? selectedLayerIndex;
     const layerId = keymap.layers[index].id;
+    const previousSelection = selectedLayerIndex;
     undoRedo?.(async () => {
       await doRemove(index);
-      return () => doRestore(layerId, index);
+
+      if (previousSelection === index) {
+        setSelectedLayerIndex(Math.max(0, Math.min(index, keymap.layers.length - 2)));
+      } else if (previousSelection > index) {
+        setSelectedLayerIndex(previousSelection - 1);
+      }
+
+      return async () => {
+        await doRestore(layerId, index);
+        setSelectedLayerIndex(previousSelection);
+      };
     });
   }, [conn, undoRedo, selectedLayerIndex, keymap, setKeymap]);
 
@@ -1392,23 +1402,16 @@ export default function Keyboard({ page }: { page: Page }) {
             canAdd={(keymap.availableLayers || 0) > 0}
             availableLayers={keymap.availableLayers || 0}
             onAddClicked={addLayer}
+            onRenameLayer={(index, newName) => {
+              const layer = keymap.layers[index];
+              changeLayerName(layer.id, layer.name ?? "", newName);
+            }}
+            onDeleteLayer={(index) => removeLayer(index)}
           />
         )}
       </div>
       {layouts && keymap && behaviors && (
         <div className="p-2 col-start-2 row-start-1 grid items-center justify-center relative min-w-0">
-          {keymap.layers[selectedLayerIndex] && (
-            <LayerToolbar
-              name={keymap.layers[selectedLayerIndex].name ?? ""}
-              placeholder={selectedLayerIndex.toString()}
-              canDelete={(keymap.layers?.length || 0) > 1}
-              onRename={(newName) => {
-                const layer = keymap.layers[selectedLayerIndex];
-                changeLayerName(layer.id, layer.name ?? "", newName);
-              }}
-              onDelete={removeLayer}
-            />
-          )}
           <KeymapComp
             keymap={keymap}
             layout={layouts[selectedPhysicalLayoutIndex]}
