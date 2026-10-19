@@ -21,6 +21,7 @@ import {
   Layers,
   Combine,
   SlidersHorizontal,
+  Settings,
   X,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -48,6 +49,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: ReactNode }[] = [
   { id: "layers", label: "Layers", icon: <Layers /> },
   { id: "combos", label: "Combos", icon: <Combine /> },
   { id: "behaviours", label: "Behaviors", icon: <SlidersHorizontal /> },
+  { id: "settings", label: "Settings", icon: <Settings /> },
 ];
 
 export const AppHeader = ({
