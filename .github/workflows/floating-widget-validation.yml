@@ -1,0 +1,54 @@
+name: Floating widget validation
+
+on:
+  push:
+    branches:
+      - feature/floating-status-widget
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/floating-widget-validation.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: zmk-studio
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Sukumar002/zmk-studio-ts-client
+          ref: feature/floating-status-rpc
+          submodules: recursive
+          path: zmk-studio-ts-client
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler libappindicator3-dev librsvg2-dev libudev-dev patchelf \
+            libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Build protocol client
+        working-directory: zmk-studio-ts-client
+        run: npm install
+
+      - name: Build frontend
+        working-directory: zmk-studio
+        run: |
+          npm ci
+          npm run build
+
+      - name: Check Tauri shell
+        working-directory: zmk-studio/src-tauri
+        run: cargo check
