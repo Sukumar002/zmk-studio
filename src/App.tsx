@@ -52,7 +52,13 @@ import type { ImportReport } from "./backup/importReport";
 import {
   BackupImportConfirmModal,
   BackupImportReportModal,
-} from "./backup/BackupImportModals";\nimport { emitFloatingStatus, showFloatingStatusWidget } from "./floatingStatus";
+} from "./backup/BackupImportModals";
+import {
+  emitFloatingStatus,
+  floatingStatusFromRpc,
+  showFloatingStatusWidget,
+  type RpcStatusSnapshot,
+} from "./floatingStatus";
 
 // Web USB serial is added per-render inside the component (it needs an
 // `establish` callback that probes ports — see below). These are the static
