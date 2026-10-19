@@ -1,7 +1,10 @@
 import type { Key } from "react-aria-components";
+import type { ConfigValue, CustomBehavior } from "@zmkfirmware/zmk-studio-ts-client/behaviors";
 
 import { MouseSettingsPanel } from "../keyboard/MouseSettingsPanel";
 import { Select } from "../misc/Select";
+import { ConfigFieldEdit } from "../behaviours/ConfigFieldEditor";
+import { fieldHelp } from "../behaviours/fieldHelp";
 
 export type ComboViewMode = "expanded" | "list";
 
@@ -21,11 +24,20 @@ const COMBO_VIEW_OPTIONS = [
 export interface StudioSettingsProps {
   comboViewMode: ComboViewMode;
   onComboViewModeChange: (mode: ComboViewMode) => void;
+  behaviours?: CustomBehavior[];
+  onApplyBehaviourField?: (
+    behaviorId: number,
+    fieldKey: string,
+    newValue: ConfigValue,
+    oldValue: ConfigValue
+  ) => void;
 }
 
 export function StudioSettings({
   comboViewMode,
   onComboViewModeChange,
+  behaviours = [],
+  onApplyBehaviourField,
 }: StudioSettingsProps) {
   return (
     <div className="h-full overflow-y-auto bg-base-300 px-6 py-6">
@@ -67,15 +79,64 @@ export function StudioSettings({
 
         <section className="rounded-lg border border-base-line bg-base-200 p-5">
           <h2 className="text-sm font-bold uppercase opacity-70">
-            Keyboard tuning
+            Behavior tuning
           </h2>
           <p className="mt-2 text-sm text-base-content/60">
-            Global hold-tap tuning such as Mod-Tap and Layer-Tap tapping terms
-            will appear here when the connected firmware exposes those values as
-            runtime settings. Current firmware keeps the built-in values in
-            compiled devicetree behavior configuration, so Studio does not
-            present non-functional controls.
+            Runtime-editable behaviors can keep different timing and tuning
+            values. Sliders are provided for quick adjustment, with an exact
+            number field beside each numeric value.
           </p>
+
+          {behaviours.length > 0 ? (
+            <div className="mt-5 flex flex-col gap-5">
+              {behaviours.map((behaviour) => {
+                const tuningFields = behaviour.config.filter(
+                  (field) => !field.schema?.positions
+                );
+
+                if (tuningFields.length === 0) return null;
+
+                return (
+                  <div
+                    key={behaviour.id}
+                    className="rounded-md border border-base-line bg-base-100 p-4"
+                  >
+                    <div className="mb-4">
+                      <div className="font-medium">
+                        {behaviour.displayName || `Behavior #${behaviour.id}`}
+                      </div>
+                      <div className="text-xs text-base-content/50">
+                        {behaviour.kind}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      {tuningFields.map((field) => (
+                        <ConfigFieldEdit
+                          key={field.key}
+                          field={field}
+                          help={fieldHelp(behaviour.kind, field.key)}
+                          onCommit={(value) =>
+                            onApplyBehaviourField?.(
+                              behaviour.id,
+                              field.key,
+                              value,
+                              field.value ?? {}
+                            )
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-base-content/60">
+              No runtime-editable behavior tuning is exposed by this firmware.
+              Built-in Mod-Tap and Layer-Tap values remain compile-time settings
+              until those behavior instances are explicitly made runtime-editable.
+            </p>
+          )}
         </section>
 
         <MouseSettingsPanel variant="settings" />
