@@ -2,15 +2,14 @@ name: "tauri-build"
 
 on:
   workflow_dispatch:
-  push:
   release:
     types: [published]
 
-# Keep only the newest branch-push build active. Tagged release runs use a
-# different ref and are not cancelled by later main-branch pushes.
+# Full desktop builds are intentionally not run on every commit. They run
+# only for an explicit full validation request or a published release.
 concurrency:
   group: tauri-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  cancel-in-progress: false
 
 jobs:
   publish-tauri:
@@ -198,7 +197,7 @@ jobs:
   # what keeps the in-app updater offering tagged releases rather than following
   # every push.
   publish-latest:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs: publish-tauri
     runs-on: ubuntu-latest
     permissions:
@@ -225,7 +224,7 @@ jobs:
           fi
           printf 'publishing %s\n' "${assets[@]}"
 
-          # Nothing serialises these runs, so two pushes inside one build cycle
+          # Nothing serialises these runs, so two explicit full-validation runs inside one build cycle
           # (~15 min for four platforms) both reach this step. Whoever gets here
           # last wins the rolling release — which is wrong when that's the OLDER
           # build, and it happens whenever the first push draws a cold Rust cache
