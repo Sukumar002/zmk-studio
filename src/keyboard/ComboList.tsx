@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 
@@ -29,7 +29,7 @@ function ComboHoverPreview({
   layoutPositions: ReturnType<typeof keyPhysicalAttrsToPositions>;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
-  const [style, setStyle] = useState<React.CSSProperties>({
+  const [style, setStyle] = useState<CSSProperties>({
     position: "fixed",
     visibility: "hidden",
   });
