@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 
 import type { Combos } from "@zmkfirmware/zmk-studio-ts-client/combos";
@@ -10,7 +10,6 @@ import { PhysicalLayout } from "./PhysicalLayout";
 import { keyPhysicalAttrsToPositions } from "./layoutKeyPositions";
 import { Button } from "../misc/Button";
 import { SidebarCard } from "../misc/SidebarCard";
-import { Tooltip } from "../misc/Tooltip";
 import type { ComboViewMode } from "../settings/StudioSettings";
 import { hid_usage_get_labels, hid_usage_page_and_id_from_usage } from "../hid-usages";
 
@@ -180,6 +179,7 @@ export const ComboList = ({
                     <SidebarCard
                       selected={selected}
                       onSelect={() => onComboSelected?.(entry.index)}
+                      className={viewMode === "list" ? "group relative overflow-visible" : undefined}
                     >
                       <div className="flex flex-col gap-0.5">
                         <span className="truncate text-base font-medium">
@@ -220,35 +220,26 @@ export const ComboList = ({
                             {positions.join(", ") || "no keys"}
                           </div>
                         ))}
+                      {viewMode === "list" && previewPositions ? (
+                        <div
+                          role="tooltip"
+                          className="pointer-events-none absolute left-[calc(100%+0.5rem)] top-0 z-50 hidden min-w-max rounded border border-base-line bg-base-100 p-3 text-base-content shadow-xl group-hover:block group-focus-visible:block"
+                        >
+                          <div className="mb-2 text-xs font-medium">
+                            {displayName}
+                          </div>
+                          <PhysicalLayout
+                            positions={previewPositions}
+                            oneU={12}
+                            keyVariant="preview"
+                            selectedPositions={positions}
+                          />
+                        </div>
+                      ) : null}
                     </SidebarCard>
                   );
 
-                  if (viewMode === "list" && previewPositions) {
-                    return (
-                      <Tooltip
-                        key={entry.index}
-                        delay={350}
-                        placement="right"
-                        label={
-                          <div className="p-1">
-                            <div className="mb-2 text-xs font-medium">
-                              {displayName}
-                            </div>
-                            <PhysicalLayout
-                              positions={previewPositions}
-                              oneU={12}
-                              keyVariant="preview"
-                              selectedPositions={positions}
-                            />
-                          </div>
-                        }
-                      >
-                        {card}
-                      </Tooltip>
-                    );
-                  }
-
-                  return <li key={entry.index}>{card}</li>;
+                  return React.cloneElement(card, { key: entry.index });
                 })}
               </ul>
             </li>
