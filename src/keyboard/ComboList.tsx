@@ -271,18 +271,37 @@ export const ComboList = ({
     const binding = baseBindings?.[position];
     if (!binding) return `#${position}`;
 
-    const behaviorName =
-      behaviors[binding.behaviorId]?.displayName || `#${position}`;
+    const behavior = behaviors[binding.behaviorId];
+    const behaviorName = behavior?.displayName || `#${position}`;
+    const layerIds = layers.map((layer) => layer.id);
+    const metadata = behavior?.metadata ?? [];
+    const set =
+      metadata.find((entry) =>
+        validateValue(layerIds, binding.param1, entry.param1)
+      ) ?? (metadata.length === 1 ? metadata[0] : undefined);
 
+    const param2Descriptor = matchDescriptor(
+      layerIds,
+      binding.param2,
+      set?.param2
+    );
+    if (param2Descriptor?.hidUsage && binding.param2 !== undefined) {
+      return hidLabel(binding.param2);
+    }
+
+    const param1Descriptor = matchDescriptor(
+      layerIds,
+      binding.param1,
+      set?.param1
+    );
+    if (param1Descriptor?.hidUsage && binding.param1 !== undefined) {
+      return hidLabel(binding.param1);
+    }
+
+    // Backward-compatible fallback for firmware that has not supplied metadata
+    // for the ordinary Key Press behavior yet.
     if (/key[ -]?press/i.test(behaviorName) && binding.param1 !== undefined) {
-      const [pageRaw, id] = hid_usage_page_and_id_from_usage(binding.param1);
-      const labels = hid_usage_get_labels(pageRaw & 0xff, id);
-      return (
-        labels.long ||
-        labels.med ||
-        labels.short ||
-        `#${position}`
-      ).replace(/^Keyboard /, "");
+      return hidLabel(binding.param1);
     }
 
     return behaviorName;
