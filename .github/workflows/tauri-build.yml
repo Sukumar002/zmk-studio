@@ -2,11 +2,18 @@ name: "tauri-build"
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "release-notes/v*.md"
+      - ".github/workflows/tauri-build.yml"
   release:
     types: [published]
 
-# Full desktop builds are intentionally not run on every commit. They run
-# only for an explicit full validation request or a published release.
+# Full desktop builds are intentionally not run on ordinary commits. They run
+# for an explicit full validation request, a deliberate release-prep change
+# (release notes), or a published release.
 concurrency:
   group: tauri-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -197,7 +204,7 @@ jobs:
   # what keeps the in-app updater offering tagged releases rather than following
   # every push.
   publish-latest:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/main'
     needs: publish-tauri
     runs-on: ubuntu-latest
     permissions:
