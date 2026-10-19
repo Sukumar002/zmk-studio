@@ -1317,6 +1317,7 @@ export default function Keyboard({ page }: { page: Page }) {
                 name: name || li.toLocaleString(),
               }))}
               layoutKeys={comboLayoutKeys}
+              baseBindings={keymap?.layers?.[0]?.bindings}
               selectedIndex={selectedComboIndex}
               onComboSelected={selectCombo}
               onAddCombo={addCombo}
