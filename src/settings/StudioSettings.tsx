@@ -23,23 +23,15 @@ export function StudioSettings({
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 pb-8">
         <div>
           <h1 className="text-xl font-semibold">Settings</h1>
-          <p className="mt-1 text-sm text-base-content/60">
-            Configure Studio preferences and runtime settings exposed by the
-            connected keyboard.
-          </p>
         </div>
 
-        <section className="rounded-lg border border-base-line bg-base-200 p-5">
-          <h2 className="text-sm font-bold uppercase opacity-70">
-            Behavior tuning
-          </h2>
-          <p className="mt-2 text-sm text-base-content/60">
-            Runtime-editable behaviors can keep different timing and tuning
-            values. Sliders are provided for quick adjustment, with an exact
-            number field beside each numeric value.
-          </p>
-
-          {behaviours.length > 0 ? (
+        {behaviours.some((behaviour) =>
+          behaviour.config.some((field) => !field.schema?.positions)
+        ) ? (
+          <section className="rounded-lg border border-base-line bg-base-200 p-5">
+            <h2 className="text-sm font-bold uppercase opacity-70">
+              Behavior tuning
+            </h2>
             <div className="mt-5 flex flex-col gap-5">
               {behaviours.map((behaviour) => {
                 const tuningFields = behaviour.config.filter(
@@ -53,13 +45,8 @@ export function StudioSettings({
                     key={behaviour.id}
                     className="rounded-md border border-base-line bg-base-100 p-4"
                   >
-                    <div className="mb-4">
-                      <div className="font-medium">
-                        {behaviour.displayName || `Behavior #${behaviour.id}`}
-                      </div>
-                      <div className="text-xs text-base-content/50">
-                        {behaviour.kind}
-                      </div>
+                    <div className="mb-4 font-medium">
+                      {behaviour.displayName || `Behavior #${behaviour.id}`}
                     </div>
                     <div className="flex flex-col gap-4">
                       {tuningFields.map((field) => (
@@ -82,14 +69,8 @@ export function StudioSettings({
                 );
               })}
             </div>
-          ) : (
-            <p className="mt-4 text-sm text-base-content/60">
-              No runtime-editable behavior tuning is exposed by this firmware.
-              Built-in Mod-Tap and Layer-Tap values remain compile-time settings
-              until those behavior instances are explicitly made runtime-editable.
-            </p>
-          )}
-        </section>
+          </section>
+        ) : null}
 
         <MouseSettingsPanel variant="settings" />
       </div>
