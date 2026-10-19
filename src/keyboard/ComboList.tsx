@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 
@@ -13,6 +13,7 @@ import { Button } from "../misc/Button";
 import { SidebarCard } from "../misc/SidebarCard";
 import { Select } from "../misc/Select";
 import { hid_usage_get_labels, hid_usage_page_and_id_from_usage } from "../hid-usages";
+import { matchDescriptor, validateValue } from "../behaviors/parameters";
 
 export type ComboViewMode = "expanded" | "compact";
 
@@ -22,6 +23,83 @@ type HoverPreview = {
   title: string;
   positions: number[];
 };
+
+function hidLabel(value: number): string {
+  const [pageRaw, id] = hid_usage_page_and_id_from_usage(value);
+  const labels = hid_usage_get_labels(pageRaw & 0xff, id);
+  return (labels.long || labels.med || labels.short || String(value))
+    .replace(/^Keyboard /, "");
+}
+
+function bindingSummary(
+  binding: BehaviorBinding | undefined,
+  behavior: GetBehaviorDetailsResponse | undefined,
+  layers: { id: number; name: string }[]
+): string {
+  if (!binding) return "No action";
+
+  const layerIds = layers.map((layer) => layer.id);
+  const metadata = behavior?.metadata ?? [];
+  const set =
+    metadata.find((entry) =>
+      validateValue(layerIds, binding.param1, entry.param1)
+    ) ?? (metadata.length === 1 ? metadata[0] : undefined);
+
+  const describe = (
+    value: number | undefined,
+    descriptors: typeof set extends undefined ? never : typeof set.param1
+  ) => {
+    if (value === undefined) return undefined;
+    const descriptor = matchDescriptor(layerIds, value, descriptors);
+    if (descriptor?.layerId) {
+      return layers.find((layer) => layer.id === value)?.name ?? `Layer ${value}`;
+    }
+    if (descriptor?.hidUsage || value !== 0) {
+      return hidLabel(value);
+    }
+    return undefined;
+  };
+
+  // ZMK hold-tap metadata presents tap as param2 and hold as param1.
+  const tap = describe(binding.param2, set?.param2);
+  const hold = describe(binding.param1, set?.param1);
+
+  if (tap && hold) return `${tap} / ${hold}`;
+  if (tap || hold) return tap || hold || behavior?.displayName || "Action";
+
+  return behavior?.displayName || "Action";
+}
+
+function CompactComboSummary({
+  trigger,
+  action,
+  showAction,
+}: {
+  trigger: string;
+  action: string;
+  showAction: boolean;
+}) {
+  return (
+    <div className="relative h-5 min-w-0 overflow-hidden text-xs text-base-content/60">
+      <span
+        className={`absolute inset-0 truncate transition-opacity duration-300 ${
+          showAction ? "opacity-0" : "opacity-100"
+        }`}
+        aria-hidden={showAction}
+      >
+        {trigger}
+      </span>
+      <span
+        className={`absolute inset-0 truncate transition-opacity duration-300 ${
+          showAction ? "opacity-100" : "opacity-0"
+        }`}
+        aria-hidden={!showAction}
+      >
+        {action}
+      </span>
+    </div>
+  );
+}
 
 function ComboHoverPreview({
   preview,
@@ -162,6 +240,21 @@ export const ComboList = ({
   const slotRef = useRef<HTMLDivElement>(null);
   const [oneU, setOneU] = useState(11);
   const [hoverPreview, setHoverPreview] = useState<HoverPreview | null>(null);
+  const [showCompactAction, setShowCompactAction] = useState(false);
+
+  useEffect(() => {
+    if (viewMode !== "compact") {
+      setShowCompactAction(false);
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setShowCompactAction((current) => !current);
+    }, 2800);
+
+    return () => window.clearInterval(timer);
+  }, [viewMode]);
+
   useLayoutEffect(() => {
     const el = slotRef.current;
     if (!el || !columns) return;
@@ -283,6 +376,11 @@ export const ComboList = ({
                       ? positions.map(keyLabel).join(" + ")
                       : "No keys configured";
                   const displayName = combo?.name?.trim() || configuredKeys;
+                  const actionSummary = bindingSummary(
+                    binding,
+                    binding ? behaviors[binding.behaviorId] : undefined,
+                    layers
+                  );
                   const selected = entry.index === selectedIndex;
 
                   return (
@@ -332,11 +430,13 @@ export const ComboList = ({
                                 </span>
                               ) : null}
                             </>
-                          ) : combo?.name?.trim() ? (
-                            <span className="truncate text-xs opacity-60">
-                              {configuredKeys}
-                            </span>
-                          ) : null}
+                          ) : (
+                            <CompactComboSummary
+                              trigger={configuredKeys}
+                              action={actionSummary}
+                              showAction={showCompactAction}
+                            />
+                          )}
                         </div>
                         {viewMode === "expanded" &&
                           (previewPositions ? (
