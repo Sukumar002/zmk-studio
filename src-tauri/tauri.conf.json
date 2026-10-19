@@ -40,7 +40,7 @@
     "shortDescription": "",
     "targets": "all",
     "windows": {
-      "signCommand": "signtool.exe sign /v /debug /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 /dlib ..\\Microsoft.Trusted.Signing.Client\\bin\\x64\\Azure.CodeSigning.Dlib.dll /dmdf trusted-signing-metadata.json %1"
+      "signCommand": "signtool.exe sign /v /debug /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 /dlib ..\\\\Microsoft.Trusted.Signing.Client\\\\bin\\\\x64\\\\Azure.CodeSigning.Dlib.dll /dmdf trusted-signing-metadata.json %1"
     }
   },
   "plugins": {
@@ -76,11 +76,26 @@
     },
     "windows": [
       {
+        "label": "main",
         "fullscreen": false,
         "height": 600,
         "resizable": true,
         "title": "ZMK Studio Custom",
         "width": 800
+      },
+      {
+        "label": "status-widget",
+        "url": "index.html?widget=1",
+        "title": "ZMK Status",
+        "width": 430,
+        "height": 76,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": true,
+        "center": false
       }
     ]
   }
