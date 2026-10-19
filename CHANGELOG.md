@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.0](https://github.com/Sukumar002/zmk-studio/compare/v1.0.2...v1.1.0) (2026-10-19)
+
+
+### Features
+
+* add compact combo list view with hover preview ([bdaf612](https://github.com/Sukumar002/zmk-studio/commit/bdaf6124702e42a5cb32e9152dbb405a6867342d))
+* add Settings navigation tab ([6da8bee](https://github.com/Sukumar002/zmk-studio/commit/6da8beefaa4aa3af70d9d402149090f2238540ba))
+* add slider and exact input for behavior tuning ([cc7c682](https://github.com/Sukumar002/zmk-studio/commit/cc7c6820c76e79aa0241908fb09640f08ea9f0bb))
+* add Studio settings page ([3e986f6](https://github.com/Sukumar002/zmk-studio/commit/3e986f68c0d5be953f5adc7e20eef89f12f278d5))
+* show per-behavior tuning in Settings ([2ee5ea5](https://github.com/Sukumar002/zmk-studio/commit/2ee5ea567abdf3e606791c976895229403f7d33d))
+* wire Settings page and persistent combo view ([d44fccb](https://github.com/Sukumar002/zmk-studio/commit/d44fccbda0eac69bc6757192b2a0322e27ee7c20))
+
+
+### Bug Fixes
+
+* accept nullable Settings selection ([68ee820](https://github.com/Sukumar002/zmk-studio/commit/68ee820400791b431780acee4947e0d1844c4ac0))
+* anchor compact combo hover preview to sidebar row ([c0fe090](https://github.com/Sukumar002/zmk-studio/commit/c0fe0909db56e82658d3e30f53f173961fd2b159))
+* portal combo hover preview outside sidebar ([2729f9e](https://github.com/Sukumar002/zmk-studio/commit/2729f9ece732e7370c7fb6a7753fa63a10c60ad4))
+* tidy portal preview React types ([14c61c7](https://github.com/Sukumar002/zmk-studio/commit/14c61c7a7e29efa202a64650f9344882c1702b9f))
+
 ## [0.6.0](https://github.com/danielsvane/zmk-studio/compare/v0.5.0...v0.6.0) (2026-08-20)
 
 

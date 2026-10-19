@@ -1,7 +1,7 @@
 {
   "name": "zmk-studio",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.1.0",
   "type": "module",
   "packageManager": "npm@11.6.2",
   "engines": {

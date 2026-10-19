@@ -8,7 +8,7 @@
   },
   "productName": "ZMK Studio Custom",
   "mainBinaryName": "zmk-studio",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "identifier": "dev.zmk.studio.custom",
   "bundle": {
     "active": true,
