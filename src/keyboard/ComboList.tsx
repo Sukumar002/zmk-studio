@@ -11,8 +11,10 @@ import { PhysicalLayout } from "./PhysicalLayout";
 import { keyPhysicalAttrsToPositions } from "./layoutKeyPositions";
 import { Button } from "../misc/Button";
 import { SidebarCard } from "../misc/SidebarCard";
-import type { ComboViewMode } from "../settings/StudioSettings";
+import { Select } from "../misc/Select";
 import { hid_usage_get_labels, hid_usage_page_and_id_from_usage } from "../hid-usages";
+
+export type ComboViewMode = "expanded" | "compact";
 
 type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
 type HoverPreview = {
@@ -117,6 +119,7 @@ export interface ComboListProps {
   draftSelected?: boolean;
   canAdd?: boolean;
   viewMode?: ComboViewMode;
+  onViewModeChange?: (mode: ComboViewMode) => void;
 }
 
 // Combo list. Rows are clickable cards, mirroring the layer picker on the left of
@@ -135,6 +138,7 @@ export const ComboList = ({
   draftSelected,
   canAdd,
   viewMode = "expanded",
+  onViewModeChange,
 }: ComboListProps) => {
   // The preview keyboard is the same for every row (only the highlight differs),
   // so build the bare positions once.
@@ -236,7 +240,27 @@ export const ComboList = ({
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-sm font-bold uppercase opacity-70">Combos</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-bold uppercase opacity-70">Combos</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-base-content/60">View</span>
+          <Select
+            aria-label="Combos view"
+            size="sm"
+            items={[
+              { id: "expanded" as const, name: "Expanded" },
+              { id: "compact" as const, name: "Compact" },
+            ]}
+            selectedKey={viewMode}
+            onSelectionChange={(key) => {
+              if (key === "expanded" || key === "compact") {
+                onViewModeChange?.(key);
+              }
+            }}
+            triggerClassName="min-w-28"
+          />
+        </div>
+      </div>
       {combos.combos.length === 0 && !draftSelected ? (
         <p className="text-sm opacity-70">No combos defined.</p>
       ) : (
@@ -265,7 +289,7 @@ export const ComboList = ({
                     <li
                       key={entry.index}
                       onMouseEnter={(event) => {
-                        if (viewMode === "list" && previewPositions) {
+                        if (viewMode === "compact" && previewPositions) {
                           setHoverPreview({
                             anchor: event.currentTarget,
                             title: displayName,
@@ -275,7 +299,7 @@ export const ComboList = ({
                       }}
                       onMouseLeave={() => setHoverPreview(null)}
                       onFocusCapture={(event) => {
-                        if (viewMode === "list" && previewPositions) {
+                        if (viewMode === "compact" && previewPositions) {
                           setHoverPreview({
                             anchor: event.currentTarget,
                             title: displayName,
@@ -352,7 +376,7 @@ export const ComboList = ({
           )}
         </ul>
       )}
-      {viewMode === "list" && previewPositions && hoverPreview ? (
+      {viewMode === "compact" && previewPositions && hoverPreview ? (
         <ComboHoverPreview
           preview={hoverPreview}
           layoutPositions={previewPositions}
