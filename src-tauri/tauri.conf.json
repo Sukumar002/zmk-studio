@@ -87,15 +87,18 @@
         "label": "status-widget",
         "url": "index.html?widget=1",
         "title": "ZMK Status",
-        "width": 430,
-        "height": 76,
-        "resizable": false,
+        "width": 650,
+        "height": 88,
+        "resizable": true,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "visible": true,
-        "center": false
+        "center": false,
+        "minWidth": 520,
+        "minHeight": 88,
+        "maxHeight": 120
       }
     ]
   }
