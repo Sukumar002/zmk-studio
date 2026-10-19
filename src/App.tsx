@@ -52,7 +52,7 @@ import type { ImportReport } from "./backup/importReport";
 import {
   BackupImportConfirmModal,
   BackupImportReportModal,
-} from "./backup/BackupImportModals";
+} from "./backup/BackupImportModals";\nimport { emitFloatingStatus, showFloatingStatusWidget } from "./floatingStatus";
 
 // Web USB serial is added per-render inside the component (it needs an
 // `establish` callback that probes ports — see below). These are the static
@@ -257,6 +257,16 @@ function App() {
   useSub<LockState>("rpc_notification.core.lockStateChanged", (ls) => {
     setLockState(ls);
   });
+
+  // The desktop status widget is a separate webview, but the main Studio
+  // window remains the sole owner of the keyboard transport.
+  useEffect(() => {
+    emitFloatingStatus({
+      connected: !!conn.conn,
+      deviceName: connectedDeviceName,
+      transport: conn.conn ? undefined : "none",
+    }).catch((e) => console.error("Failed to update floating status", e));
+  }, [conn.conn, connectedDeviceName]);
 
   useEffect(() => {
     if (!conn) {
@@ -730,6 +740,7 @@ function App() {
               onResetSettings={resetSettings}
               onExportBackup={exportBackup}
               onImportBackup={requestImport}
+              onShowStatusWidget={showFloatingStatusWidget}
             />
             <Keyboard page={page} />
           </div>
