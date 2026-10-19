@@ -51,7 +51,7 @@ import { ErrorMessage } from "../misc/Field";
 import { BehaviourList } from "../behaviours/BehaviourList";
 import { BehaviourEditor } from "../behaviours/BehaviourEditor";
 import { defaultBehaviourName } from "../behaviours/behaviourNames";
-import { MouseSettingsPanel } from "./MouseSettingsPanel";
+import { StudioSettings, type ComboViewMode } from "../settings/StudioSettings";
 
 // The left sidebar (master list) on every editor page — Layers, Combos,
 // Behaviours. A fixed `w-72` so all three pages line up exactly; their `auto`
@@ -79,7 +79,7 @@ function editData<T>(recipe: (draft: Draft<T>) => void) {
 }
 
 /** Top-level sections selectable from the header navigation. */
-export type Page = "layers" | "combos" | "behaviours";
+export type Page = "layers" | "combos" | "behaviours" | "settings";
 
 type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
 
@@ -233,6 +233,15 @@ export default function Keyboard({ page }: { page: Page }) {
   const [selectedBehaviourId, setSelectedBehaviourId] = useState<
     number | undefined
   >(undefined);
+
+  const [comboViewMode, setComboViewMode] = useState<ComboViewMode>(() => {
+    const stored = window.localStorage.getItem("zmk-studio.combo-view");
+    return stored === "list" ? "list" : "expanded";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem("zmk-studio.combo-view", comboViewMode);
+  }, [comboViewMode]);
 
   // Read the custom-behaviour pool, now editable in place (M3: RAM-only, lost
   // on reboot) via the generic schema-driven config editor.
@@ -1196,6 +1205,17 @@ export default function Keyboard({ page }: { page: Page }) {
     }
   }, [keymap, selectedLayerIndex]);
 
+  if (page === "settings") {
+    return (
+      <StudioSettings
+        comboViewMode={comboViewMode}
+        onComboViewModeChange={setComboViewMode}
+        behaviours={customBehaviors?.behaviors ?? []}
+        onApplyBehaviourField={doApplyConfigField}
+      />
+    );
+  }
+
   if (page === "behaviours") {
     const behaviours = customBehaviors?.behaviors ?? [];
     const poolFull =
@@ -1302,6 +1322,7 @@ export default function Keyboard({ page }: { page: Page }) {
               onAddCombo={addCombo}
               draftSelected={draftCombo !== null}
               canAdd={Object.keys(behaviors).length > 0}
+              viewMode={comboViewMode}
             />
           )}
         </div>
@@ -1363,18 +1384,15 @@ export default function Keyboard({ page }: { page: Page }) {
         */}
 
         {keymap && (
-          <>
-            <LayerPicker
-              layers={keymap.layers}
-              selectedLayerIndex={selectedLayerIndex}
-              onLayerClicked={setSelectedLayerIndex}
-              onLayerMoved={moveLayer}
-              canAdd={(keymap.availableLayers || 0) > 0}
-              availableLayers={keymap.availableLayers || 0}
-              onAddClicked={addLayer}
-            />
-            <MouseSettingsPanel />
-          </>
+          <LayerPicker
+            layers={keymap.layers}
+            selectedLayerIndex={selectedLayerIndex}
+            onLayerClicked={setSelectedLayerIndex}
+            onLayerMoved={moveLayer}
+            canAdd={(keymap.availableLayers || 0) > 0}
+            availableLayers={keymap.availableLayers || 0}
+            onAddClicked={addLayer}
+          />
         )}
       </div>
       {layouts && keymap && behaviors && (
