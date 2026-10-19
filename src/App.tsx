@@ -258,15 +258,49 @@ function App() {
     setLockState(ls);
   });
 
-  // The desktop status widget is a separate webview, but the main Studio
-  // window remains the sole owner of the keyboard transport.
+  const publishFloatingStatus = useCallback(
+    (status: RpcStatusSnapshot) => {
+      emitFloatingStatus(
+        floatingStatusFromRpc(status, connectedDeviceName)
+      ).catch((e) => console.error("Failed to update floating status", e));
+    },
+    [connectedDeviceName]
+  );
+
+  useSub<RpcStatusSnapshot>(
+    "rpc_notification.core.statusChanged",
+    publishFloatingStatus
+  );
+
+  // The desktop HUD is a separate webview, but this main window remains the
+  // sole owner of the keyboard transport. Read one initial snapshot after
+  // connecting; firmware notifications carry every meaningful change after it.
   useEffect(() => {
-    emitFloatingStatus({
-      connected: !!conn.conn,
-      deviceName: connectedDeviceName,
-      transport: conn.conn ? undefined : "none",
-    }).catch((e) => console.error("Failed to update floating status", e));
-  }, [conn.conn, connectedDeviceName]);
+    if (!conn.conn) {
+      emitFloatingStatus({
+        connected: false,
+        deviceName: connectedDeviceName,
+        transport: "none",
+      }).catch((e) => console.error("Failed to clear floating status", e));
+      return;
+    }
+
+    let cancelled = false;
+    call_rpc(conn.conn, { core: { getStatus: true } })
+      .then((response) => {
+        const status = response.core?.getStatus;
+        if (!cancelled && status) {
+          publishFloatingStatus(status);
+        }
+      })
+      .catch((e) => {
+        console.warn("Connected firmware does not expose live HUD status", e);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conn.conn, connectedDeviceName, publishFloatingStatus]);
 
   useEffect(() => {
     if (!conn) {
