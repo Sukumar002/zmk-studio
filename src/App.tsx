@@ -292,6 +292,11 @@ function App() {
     }
 
     let cancelled = false;
+    emitFloatingStatus({
+      connected: true,
+      deviceName: connectedDeviceName,
+    }).catch((e) => console.error("Failed to prime floating status", e));
+
     call_rpc(conn.conn, { core: { getStatus: true } })
       .then((response) => {
         const status = response.core?.getStatus;
