@@ -10,6 +10,8 @@ import { PhysicalLayout } from "./PhysicalLayout";
 import { keyPhysicalAttrsToPositions } from "./layoutKeyPositions";
 import { Button } from "../misc/Button";
 import { SidebarCard } from "../misc/SidebarCard";
+import { Tooltip } from "../misc/Tooltip";
+import type { ComboViewMode } from "../settings/StudioSettings";
 
 type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
 
@@ -27,6 +29,7 @@ export interface ComboListProps {
    * as a trailing placeholder row so the list still reflects what's being edited. */
   draftSelected?: boolean;
   canAdd?: boolean;
+  viewMode?: ComboViewMode;
 }
 
 // Combo list. Rows are clickable cards, mirroring the layer picker on the left of
@@ -43,6 +46,7 @@ export const ComboList = ({
   onAddCombo,
   draftSelected,
   canAdd,
+  viewMode = "expanded",
 }: ComboListProps) => {
   // The preview keyboard is the same for every row (only the highlight differs),
   // so build the bare positions once.
@@ -139,30 +143,42 @@ export const ComboList = ({
                   const behaviorName = binding
                     ? behaviors[binding.behaviorId]?.displayName || "Unknown"
                     : "—";
-                  const displayName = combo?.name?.trim() || behaviorName;
                   const positions = combo?.keyPositions || [];
+                  const configuredKeys =
+                    positions.length > 0
+                      ? `Keys ${positions.join(" + ")}`
+                      : "No keys configured";
+                  const displayName = combo?.name?.trim() || configuredKeys;
                   const selected = entry.index === selectedIndex;
 
-                  return (
-                    <li key={entry.index}>
-                      <SidebarCard
-                        selected={selected}
-                        onSelect={() => onComboSelected?.(entry.index)}
-                      >
-                        <div className="flex flex-col gap-0.5">
-                          <span className="truncate text-base font-medium">
-                            {displayName}
-                          </span>
-                          <span className="truncate text-sm opacity-60">
-                            {combo?.name?.trim() ? behaviorName : "Combo #" + entry.index}
-                          </span>
-                          {binding ? (
-                            <span className="inline-flex text-base opacity-70 [&_svg]:size-4">
-                              <HidUsageLabel hid_usage={binding.param1} verbose />
+                  const card = (
+                    <SidebarCard
+                      selected={selected}
+                      onSelect={() => onComboSelected?.(entry.index)}
+                    >
+                      <div className="flex flex-col gap-0.5">
+                        <span className="truncate text-base font-medium">
+                          {displayName}
+                        </span>
+                        {viewMode === "expanded" ? (
+                          <>
+                            <span className="truncate text-sm opacity-60">
+                              {combo?.name?.trim() ? behaviorName : "Combo #" + entry.index}
                             </span>
-                          ) : null}
-                        </div>
-                        {previewPositions ? (
+                            {binding ? (
+                              <span className="inline-flex text-base opacity-70 [&_svg]:size-4">
+                                <HidUsageLabel hid_usage={binding.param1} verbose />
+                              </span>
+                            ) : null}
+                          </>
+                        ) : combo?.name?.trim() ? (
+                          <span className="truncate text-xs opacity-60">
+                            {configuredKeys}
+                          </span>
+                        ) : null}
+                      </div>
+                      {viewMode === "expanded" &&
+                        (previewPositions ? (
                           <div
                             ref={entry === combos.combos[0] ? slotRef : undefined}
                             className="mt-1.5 flex justify-start"
@@ -178,10 +194,36 @@ export const ComboList = ({
                           <div className="mt-1 font-mono text-xs opacity-60">
                             {positions.join(", ") || "no keys"}
                           </div>
-                        )}
-                      </SidebarCard>
-                    </li>
+                        ))}
+                    </SidebarCard>
                   );
+
+                  if (viewMode === "list" && previewPositions) {
+                    return (
+                      <Tooltip
+                        key={entry.index}
+                        delay={350}
+                        placement="right"
+                        label={
+                          <div className="p-1">
+                            <div className="mb-2 text-xs font-medium">
+                              {displayName}
+                            </div>
+                            <PhysicalLayout
+                              positions={previewPositions}
+                              oneU={12}
+                              keyVariant="preview"
+                              selectedPositions={positions}
+                            />
+                          </div>
+                        }
+                      >
+                        {card}
+                      </Tooltip>
+                    );
+                  }
+
+                  return <li key={entry.index}>{card}</li>;
                 })}
               </ul>
             </li>
