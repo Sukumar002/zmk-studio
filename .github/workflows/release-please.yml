@@ -1,11 +1,12 @@
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions: {}
 
 name: release-please
+
+# Release PR automation is opt-in. Normal development pushes only build/deploy
+# the web app; this avoids a known PR-permission failure on every commit.
 
 jobs:
   release-please:
