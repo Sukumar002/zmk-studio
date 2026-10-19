@@ -1219,6 +1219,9 @@ export default function Keyboard({ page }: { page: Page }) {
     return (
       <StudioSettings
         behaviours={customBehaviors?.behaviors ?? []}
+        behavioursLoaded={
+          customBehaviors !== undefined || customBehaviorsError !== undefined
+        }
         onApplyBehaviourField={doApplyConfigField}
       />
     );
