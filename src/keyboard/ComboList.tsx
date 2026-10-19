@@ -47,7 +47,7 @@ function bindingSummary(
 
   const describe = (
     value: number | undefined,
-    descriptors: typeof set extends undefined ? never : typeof set.param1
+    descriptors?: Parameters<typeof matchDescriptor>[2]
   ) => {
     if (value === undefined) return undefined;
     const descriptor = matchDescriptor(layerIds, value, descriptors);
