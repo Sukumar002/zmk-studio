@@ -23,7 +23,6 @@ import {
   SlidersHorizontal,
   Settings,
   X,
-  PictureInPicture2,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Tooltip } from "./misc/Tooltip";
@@ -236,14 +235,6 @@ export const AppHeader = ({
             <DropdownMenuItem icon={<Upload />} onAction={onImportBackup}>
               Import Backup…
             </DropdownMenuItem>
-            {window.__TAURI_INTERNALS__ && onShowStatusWidget ? (
-              <DropdownMenuItem
-                icon={<PictureInPicture2 />}
-                onAction={onShowStatusWidget}
-              >
-                Show Status Widget
-              </DropdownMenuItem>
-            ) : null}
           </DropdownMenu>
         )}
         {/* Last, and outside the `connectedDeviceLabel` gate above: app chrome
