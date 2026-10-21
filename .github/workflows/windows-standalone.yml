@@ -68,6 +68,10 @@ jobs:
 
       - name: Build Windows installers
         working-directory: zmk-studio
+        env:
+          # The build fetches public release metadata from GitHub; authenticate to avoid
+          # unauthenticated API rate limits on hosted runners.
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm run tauri build -- --bundles nsis,msi
 
       - name: Upload standalone installers
