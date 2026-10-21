@@ -100,6 +100,11 @@ export default function FloatingStatusWidget() {
           data-tauri-drag-region
           aria-label="Move Keyboard HUD"
           title="Drag to move"
+          onMouseDown={() => {
+            getCurrentWindow()
+              .startDragging()
+              .catch((error) => console.error("Failed to drag status widget", error));
+          }}
         >
           <GripHorizontal size={17} data-tauri-drag-region />
         </button>
