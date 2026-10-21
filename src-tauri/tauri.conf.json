@@ -94,7 +94,7 @@
         "transparent": true,
         "alwaysOnTop": true,
         "skipTaskbar": true,
-        "visible": true,
+        "visible": false,
         "center": false,
         "minWidth": 520,
         "minHeight": 88,
