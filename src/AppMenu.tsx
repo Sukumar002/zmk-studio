@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAllWindows } from "@tauri-apps/api/window";
+import { getAllWebviewWindows } from "@tauri-apps/api/webviewWindow";
 import { EllipsisVertical, Info, Scale, Sparkles, PictureInPicture2 } from "lucide-react";
 
 import { AboutModal } from "./AboutModal";
@@ -62,7 +62,7 @@ export const AppMenuView = ({
   useEffect(() => {
     if (!window.__TAURI_INTERNALS__) return;
     let cancelled = false;
-    getAllWindows()
+    getAllWebviewWindows()
       .then(async (windows) => {
         const widget = windows.find((candidate) => candidate.label === "status-widget");
         if (!widget) return;
@@ -77,7 +77,7 @@ export const AppMenuView = ({
 
   const toggleStatusWidget = async () => {
     if (!window.__TAURI_INTERNALS__) return;
-    const windows = await getAllWindows();
+    const windows = await getAllWebviewWindows();
     const widget = windows.find((candidate) => candidate.label === "status-widget");
     if (!widget) return;
     if (await widget.isVisible()) {
