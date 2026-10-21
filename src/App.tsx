@@ -1,4 +1,5 @@
 import { AppHeader } from "./AppHeader";
+import { listen } from "@tauri-apps/api/event";
 
 import {
   create_rpc_connection,
@@ -59,6 +60,7 @@ import {
   showFloatingStatusWidget,
   type RpcStatusSnapshot,
 } from "./floatingStatus";
+import type { FloatingStatus } from "./FloatingStatusWidget";
 
 // Web USB serial is added per-render inside the component (it needs an
 // `establish` callback that probes ports — see below). These are the static
@@ -264,13 +266,41 @@ function App() {
     setLockState(ls);
   });
 
+  // Cache the latest HUD snapshot in the main window. Tauri events are not a
+  // retained message queue, so a widget opened after a status event must ask
+  // for the current snapshot rather than waiting for the next keyboard change.
+  const latestFloatingStatus = useRef<FloatingStatus>({
+    connected: false,
+    transport: "none",
+  });
+
+  const sendFloatingStatus = useCallback((status: FloatingStatus) => {
+    latestFloatingStatus.current = status;
+    emitFloatingStatus(status).catch((e) =>
+      console.error("Failed to update floating status", e)
+    );
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    listen("zmk-floating-status-request", () => {
+      sendFloatingStatus(latestFloatingStatus.current);
+    }).then((stop) => {
+      if (cancelled) stop();
+      else unlisten = stop;
+    }).catch((e) => console.error("Failed to listen for floating status requests", e));
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [sendFloatingStatus]);
+
   const publishFloatingStatus = useCallback(
     (status: RpcStatusSnapshot) => {
-      emitFloatingStatus(
-        floatingStatusFromRpc(status, connectedDeviceName)
-      ).catch((e) => console.error("Failed to update floating status", e));
+      sendFloatingStatus(floatingStatusFromRpc(status, connectedDeviceName));
     },
-    [connectedDeviceName]
+    [connectedDeviceName, sendFloatingStatus]
   );
 
   useSub<RpcStatusSnapshot>(
@@ -283,19 +313,20 @@ function App() {
   // connecting; firmware notifications carry every meaningful change after it.
   useEffect(() => {
     if (!conn.conn) {
-      emitFloatingStatus({
+      sendFloatingStatus({
         connected: false,
         deviceName: connectedDeviceName,
         transport: "none",
-      }).catch((e) => console.error("Failed to clear floating status", e));
+      });
       return;
     }
 
     let cancelled = false;
-    emitFloatingStatus({
+    sendFloatingStatus({
+      ...latestFloatingStatus.current,
       connected: true,
       deviceName: connectedDeviceName,
-    }).catch((e) => console.error("Failed to prime floating status", e));
+    });
 
     call_rpc(conn.conn, { core: { getStatus: true } })
       .then((response) => {
@@ -311,7 +342,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [conn.conn, connectedDeviceName, publishFloatingStatus]);
+  }, [conn.conn, connectedDeviceName, publishFloatingStatus, sendFloatingStatus]);
 
   useEffect(() => {
     if (!conn) {

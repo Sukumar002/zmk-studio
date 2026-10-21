@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import {
@@ -63,7 +63,12 @@ export default function FloatingStatusWidget() {
 
     listen<FloatingStatus>("zmk-floating-status", (event) =>
       setStatus(event.payload)
-    ).then((unlisten) => (stopStatus = unlisten));
+    ).then((unlisten) => {
+      stopStatus = unlisten;
+      // Ask the main Studio window for its latest cached snapshot. This also
+      // handles opening the widget after the last keyboard status notification.
+      return emit("zmk-floating-status-request");
+    }).catch((error) => console.error("Failed to initialize status widget data", error));
 
     win.onMoved(({ payload }) => {
       localStorage.setItem(POSITION_KEY, JSON.stringify(payload));
