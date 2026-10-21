@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { EllipsisVertical, Info, Scale, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getAllWindows } from "@tauri-apps/api/window";
+import { EllipsisVertical, Info, Scale, Sparkles, PictureInPicture2 } from "lucide-react";
 
 import { AboutModal } from "./AboutModal";
 import { LicenseNoticeModal } from "./misc/LicenseNoticeModal";
@@ -56,6 +57,38 @@ export const AppMenuView = ({
   const [showAbout, setShowAbout] = useState(false);
   const [showLicenseNotice, setShowLicenseNotice] = useState(false);
   const [showUpdate, setShowUpdate] = useState(false);
+  const [statusWidgetVisible, setStatusWidgetVisible] = useState(false);
+
+  useEffect(() => {
+    if (!window.__TAURI_INTERNALS__) return;
+    let cancelled = false;
+    getAllWindows()
+      .then(async (windows) => {
+        const widget = windows.find((candidate) => candidate.label === "status-widget");
+        if (!widget) return;
+        const visible = await widget.isVisible().catch(() => false);
+        if (!cancelled) setStatusWidgetVisible(visible);
+      })
+      .catch((error) => console.error("Failed to inspect status widget", error));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggleStatusWidget = async () => {
+    if (!window.__TAURI_INTERNALS__) return;
+    const windows = await getAllWindows();
+    const widget = windows.find((candidate) => candidate.label === "status-widget");
+    if (!widget) return;
+    if (await widget.isVisible()) {
+      await widget.hide();
+      setStatusWidgetVisible(false);
+    } else {
+      await widget.show();
+      await widget.setAlwaysOnTop(true);
+      setStatusWidgetVisible(true);
+    }
+  };
 
   return (
     <>
@@ -107,6 +140,14 @@ export const AppMenuView = ({
         {/* Theme sits above About/License because it's the only thing here
             anyone changes more than once. */}
         <ThemeMenuItems />
+        {window.__TAURI_INTERNALS__ ? (
+          <DropdownMenuItem
+            icon={<PictureInPicture2 />}
+            onAction={() => void toggleStatusWidget()}
+          >
+            {statusWidgetVisible ? "Hide Status Widget" : "Show Status Widget"}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem icon={<Info />} onAction={() => setShowAbout(true)}>
           About ZMK Studio
         </DropdownMenuItem>
