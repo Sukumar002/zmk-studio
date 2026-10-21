@@ -1,6 +1,15 @@
 name: "Windows Standalone Installer"
 
 on:
+  push:
+    branches:
+      - feature/floating-status-widget
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/windows-standalone.yml"
   workflow_dispatch:
 
 jobs:
@@ -15,11 +24,11 @@ jobs:
         with:
           path: zmk-studio
 
-      - name: Checkout Studio TypeScript client
+      - name: Checkout matching Studio TypeScript client
         uses: actions/checkout@v4
         with:
           repository: Sukumar002/zmk-studio-ts-client
-          ref: main
+          ref: feature/floating-status-rpc
           submodules: recursive
           path: zmk-studio-ts-client
 
@@ -55,7 +64,7 @@ jobs:
         working-directory: zmk-studio/src-tauri
         shell: bash
         run: |
-          node -e "const fs=require('fs'),f='tauri.conf.json',c=JSON.parse(fs.readFileSync(f,'utf8'));delete c.bundle.windows.signCommand;c.bundle.createUpdaterArtifacts=false;fs.writeFileSync(f,JSON.stringify(c,null,2)+'\n')"
+          node -e "const fs=require('fs'),f='tauri.conf.json',c=JSON.parse(fs.readFileSync(f,'utf8'));delete c.bundle.windows.signCommand;c.bundle.createUpdaterArtifacts=false;fs.writeFileSync(f,JSON.stringify(c,null,2)+'\\n')"
 
       - name: Build Windows installers
         working-directory: zmk-studio
@@ -64,7 +73,7 @@ jobs:
       - name: Upload standalone installers
         uses: actions/upload-artifact@v4
         with:
-          name: zmk-studio-windows-standalone
+          name: zmk-studio-windows-floating-status
           if-no-files-found: error
           path: |
             zmk-studio/src-tauri/target/release/bundle/nsis/*.exe
