@@ -67,7 +67,6 @@ export const AppHeader = ({
   onResetSettings,
   onExportBackup,
   onImportBackup,
-  onShowStatusWidget,
 }: AppHeaderProps) => {
   const [showSettingsReset, setShowSettingsReset] = useState(false);
 
