@@ -18,6 +18,12 @@
     "core:tray:default",
     "cli:default",
     "updater:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-is-visible",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-set-position",
+    "core:window:allow-start-dragging"
   ]
 }
