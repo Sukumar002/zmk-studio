@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import FloatingStatusWidget from "./FloatingStatusWidget.tsx";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import "./index.css";
 
 // A backstop, not a handler: `call_rpc` rejects on a transport fault, and the
@@ -21,7 +21,7 @@ window.addEventListener("unhandledrejection", (e) => {
 // fallback, but the configured window label is the source of truth in Tauri.
 const isFloatingWidget =
   !!window.__TAURI_INTERNALS__ &&
-  (getCurrentWindow().label === "status-widget" ||
+  (getCurrentWebviewWindow().label === "status-widget" ||
     new URLSearchParams(window.location.search).get("widget") === "1");
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
