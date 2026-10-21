@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import {
   Battery,
   Bluetooth,
@@ -48,7 +48,7 @@ export default function FloatingStatusWidget() {
   useEffect(() => {
     let stopStatus: (() => void) | undefined;
     let stopMoved: (() => void) | undefined;
-    const win = getCurrentWindow();
+    const win = getCurrentWebviewWindow();
 
     try {
       const saved = JSON.parse(localStorage.getItem(POSITION_KEY) || "null") as
@@ -101,7 +101,7 @@ export default function FloatingStatusWidget() {
           aria-label="Move Keyboard HUD"
           title="Drag to move"
           onMouseDown={() => {
-            getCurrentWindow()
+            getCurrentWebviewWindow()
               .startDragging()
               .catch((error) => console.error("Failed to drag status widget", error));
           }}
@@ -185,7 +185,7 @@ export default function FloatingStatusWidget() {
           className="ml-auto opacity-35 hover:opacity-90 shrink-0"
           aria-label="Hide Keyboard HUD"
           title="Hide"
-          onClick={() => getCurrentWindow().hide()}
+          onClick={() => getCurrentWebviewWindow().hide()}
         >
           <X size={15} />
         </button>
