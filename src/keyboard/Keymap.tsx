@@ -251,7 +251,9 @@ export const Keymap = ({
     return <></>;
   }
 
-  const activeLayerName = (keymap.layers[selectedLayerIndex].name || layers[selectedLayerIndex]?.name || "").toLowerCase();
+  const activeLayerName = (
+    keymap.layers[selectedLayerIndex].name || layers[selectedLayerIndex]?.name || ""
+  ).trim().toLowerCase();
   const isChocofiBase = activeLayerName === "base_c";
   const positions = layout.keys.map((k, i) => {
     // BASE_C uses the firmware-aligned index map, but Chocofi has no outer
