@@ -1115,8 +1115,9 @@ export default function Keyboard({ page }: { page: Page }) {
   }, [conn, undoRedo, keymap, setKeymap]);
 
   const removeLayer = useCallback((targetIndex?: number) => {
-    if (targetIndex === undefined || isProtectedBaseLayer(keymap?.layers[targetIndex])) {
-      console.warn("Refusing to delete a protected base layer", targetIndex);
+    const requestedIndex = targetIndex ?? selectedLayerIndex;
+    if (isProtectedBaseLayer(keymap?.layers[requestedIndex])) {
+      console.warn("Refusing to delete a protected base layer", requestedIndex);
       return;
     }
     async function doRemove(layerIndex: number): Promise<void> {
@@ -1176,7 +1177,7 @@ export default function Keyboard({ page }: { page: Page }) {
       throw new Error("No keymap loaded");
     }
 
-    const index = targetIndex ?? selectedLayerIndex;
+    const index = requestedIndex;
     const layerId = keymap.layers[index].id;
     const previousSelection = selectedLayerIndex;
     undoRedo?.(async () => {
