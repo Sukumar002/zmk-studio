@@ -1,0 +1,65 @@
+name: Pull request checks
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studio-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Studio
+        uses: actions/checkout@v4
+        with:
+          path: zmk-studio
+
+      - name: Checkout Studio TypeScript client
+        uses: actions/checkout@v4
+        with:
+          repository: Sukumar002/zmk-studio-ts-client
+          ref: main
+          path: zmk-studio-ts-client
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: |
+            zmk-studio/package-lock.json
+            zmk-studio-ts-client/package-lock.json
+
+      - name: Install Protocol Buffers compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Build Studio TypeScript client
+        working-directory: zmk-studio-ts-client
+        run: npm install
+
+      - name: Install Studio dependencies
+        working-directory: zmk-studio
+        run: npm ci
+
+      - name: Type-check and build
+        working-directory: zmk-studio
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build
+
+      - name: Run tests
+        working-directory: zmk-studio
+        run: npm test
+
+      - name: Run lint
+        working-directory: zmk-studio
+        run: npm run lint
