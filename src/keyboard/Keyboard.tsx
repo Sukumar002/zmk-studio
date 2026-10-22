@@ -91,15 +91,37 @@ function isProtectedBaseLayer(layer: Layer | undefined): boolean {
 
 // Firmware may not provide a user-facing combo name, so inspect the bound
 // behavior identity as well as the optional display name.
-function isCriticalCombo(combo: Combo | undefined, behaviors: BehaviorMap): boolean {
+function isCriticalCombo(
+  combo: Combo | undefined,
+  behaviors: BehaviorMap
+): boolean {
   if (!combo) return false;
-  const behavior = behaviors[combo.binding?.behaviorId];
+  const behaviorId = combo.binding?.behaviorId;
+  const behavior = behaviorId === undefined ? undefined : behaviors[behaviorId];
   const values = Object.values((behavior ?? {}) as Record<string, unknown>);
-  const behaviorText = values.filter((v): v is string => typeof v === "string").join(" ");
-  const identity = (String(combo.name ?? "") + " " + behaviorText).toLowerCase().replace(/[\s_-]+/g, "");
-  return identity.includes("universalswitch") || identity.includes("switchtohana") || identity.includes("switchtochocofi") || identity.includes("studiounlock");
-}
+  const behaviorText = values
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+  const identity = `${String(combo.name ?? "")} ${behaviorText}`
+    .toLowerCase()
+    .replace(/[\\s_-]+/g, "");
 
+  // The universal switch uses this dedicated two-key chord; the Studio
+  // Unlock combo uses the outer thumb positions in the shared Hana-aligned map.
+  const positions = combo.keyPositions ?? [];
+  const isSwitchChord =
+    positions.length === 2 && positions.includes(1) && positions.includes(10);
+  const isUnlockChord = positions.includes(39) && positions.includes(45);
+
+  return (
+    identity.includes("universalswitch") ||
+    identity.includes("switchtohana") ||
+    identity.includes("switchtochocofi") ||
+    identity.includes("studiounlock") ||
+    isSwitchChord ||
+    isUnlockChord
+  );
+}
 // Returns the behaviour map plus a `refresh` callback. The map is fetched on
 // connect/unlock; `refresh` re-fetches it so a behaviour claimed at runtime
 // (add_custom_behavior) shows up in the binding pickers without a reconnect.
