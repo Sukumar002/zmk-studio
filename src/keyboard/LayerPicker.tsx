@@ -31,6 +31,8 @@ interface LayerPickerProps {
   onAddClicked?: () => void | Promise<void>;
   onRenameLayer?: (index: number, name: string) => void;
   onDeleteLayer?: (index: number) => void;
+  /** Stable identities of essential base layers. */
+  protectedLayerIds?: number[];
 }
 
 // Layer list. Mirrors the Combos/Behaviours sidebars: a plain title, a
@@ -47,6 +49,7 @@ export const LayerPicker = ({
   onAddClicked,
   onRenameLayer,
   onDeleteLayer,
+  protectedLayerIds = [],
   ...props
 }: LayerPickerProps) => {
   const layer_items = useMemo(() => {
@@ -83,6 +86,8 @@ export const LayerPicker = ({
     onReorder(e) {
       const startIndex = layer_items.findIndex((l) => e.keys.has(l.id));
       const endIndex = layer_items.findIndex((l) => l.id === e.target.key);
+      if (startIndex < 0 || endIndex < 0) return;
+      if (protectedLayerIds.includes(layer_items[startIndex].id) || protectedLayerIds.includes(layer_items[endIndex].id)) return;
       onLayerMoved?.(startIndex, endIndex);
     },
   });
@@ -123,7 +128,8 @@ export const LayerPicker = ({
             <LayerToolbar
               name={layers[layer_item.index]?.name ?? ""}
               placeholder={layer_item.index.toString()}
-              canDelete={layers.length > 1}
+              canDelete={layers.length > 1 && !protectedLayerIds.includes(layer_item.id)}
+              canRename={!protectedLayerIds.includes(layer_item.id)}
               className="w-16 justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
               onRename={(name) => onRenameLayer?.(layer_item.index, name)}
               onDelete={() => onDeleteLayer?.(layer_item.index)}
