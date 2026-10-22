@@ -96,7 +96,7 @@ function isCriticalCombo(combo: Combo | undefined, behaviors: BehaviorMap): bool
   const behavior = behaviors[combo.binding?.behaviorId];
   const values = Object.values((behavior ?? {}) as Record<string, unknown>);
   const behaviorText = values.filter((v): v is string => typeof v === "string").join(" ");
-  const identity = (String(combo.name ?? "") + " " + behaviorText).toLowerCase().replace(/[\\s_-]+/g, "");
+  const identity = (String(combo.name ?? "") + " " + behaviorText).toLowerCase().replace(/[\s_-]+/g, "");
   return identity.includes("universalswitch") || identity.includes("switchtohana") || identity.includes("switchtochocofi") || identity.includes("studiounlock");
 }
 
