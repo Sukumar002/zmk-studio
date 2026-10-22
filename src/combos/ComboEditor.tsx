@@ -31,6 +31,8 @@ export interface ComboEditorProps {
   maxKeysPerCombo: number;
   onApply: (combo: Combo) => void;
   onDelete?: (index: number) => void;
+  /** False for profile-switching and Studio Unlock combos. */
+  canDelete?: boolean;
   onMoveUp?: (index: number) => void;
   onMoveDown?: (index: number) => void;
 }
@@ -104,6 +106,7 @@ export const ComboEditor = ({
   maxKeysPerCombo,
   onApply,
   onDelete,
+  canDelete = true,
   onMoveUp,
   onMoveDown,
 }: ComboEditorProps) => {
@@ -162,7 +165,7 @@ export const ComboEditor = ({
             <Button variant="ghost" size="sm" icon={<ArrowDown aria-hidden />} isDisabled={!onMoveDown} onPress={() => onMoveDown?.(index)}>
               Move down
             </Button>
-            {onDelete && (
+            {onDelete && canDelete && (
               <Button variant="ghost" size="sm" icon={<Trash2 aria-hidden />} onPress={() => onDelete(index)}>
                 Delete
               </Button>
