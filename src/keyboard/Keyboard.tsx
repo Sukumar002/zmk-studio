@@ -104,7 +104,7 @@ function isCriticalCombo(
     .join(" ");
   const identity = `${String(combo.name ?? "")} ${behaviorText}`
     .toLowerCase()
-    .replace(/[\\s_-]+/g, "");
+    .replace(/[\s_-]+/g, "");
 
   // The universal switch uses this dedicated two-key chord; the Studio
   // Unlock combo uses the outer thumb positions in the shared Hana-aligned map.
