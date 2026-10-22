@@ -18,6 +18,8 @@ export interface LayerToolbarProps {
   onDelete: () => void;
   /** False when only one layer remains (the last layer can't be deleted). */
   canDelete?: boolean;
+  /** False for system-critical layers whose identity must remain stable. */
+  canRename?: boolean;
   className?: string;
 }
 
@@ -32,6 +34,7 @@ export function LayerToolbar({
   onRename,
   onDelete,
   canDelete,
+  canRename = true,
   className,
 }: LayerToolbarProps) {
   const [renaming, setRenaming] = useState(false);
@@ -46,6 +49,7 @@ export function LayerToolbar({
         size="sm"
         icon={<Pencil aria-hidden />}
         aria-label="Rename layer"
+        isDisabled={!canRename}
         className="!h-7 !w-7 !p-0"
         onPress={() => setRenaming(true)}
       />

@@ -82,6 +82,46 @@ export type Page = "layers" | "combos" | "behaviours" | "settings";
 
 type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
 
+// The two profile bases are structural anchors. Keep their bindings editable,
+// but not renameable, deletable, or movable because combo layer masks rely on identity.
+function isProtectedBaseLayer(layer: Layer | undefined): boolean {
+  const name = (layer?.name ?? "").trim().toLowerCase();
+  return name === "base_h" || name === "base_c";
+}
+
+// Firmware may not provide a user-facing combo name, so inspect the bound
+// behavior identity as well as the optional display name.
+function isCriticalCombo(
+  combo: Combo | undefined,
+  behaviors: BehaviorMap
+): boolean {
+  if (!combo) return false;
+  const behaviorId = combo.binding?.behaviorId;
+  const behavior = behaviorId === undefined ? undefined : behaviors[behaviorId];
+  const values = Object.values((behavior ?? {}) as Record<string, unknown>);
+  const behaviorText = values
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+  const identity = `${String(combo.name ?? "")} ${behaviorText}`
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+
+  // The universal switch uses this dedicated two-key chord; the Studio
+  // Unlock combo uses the outer thumb positions in the shared Hana-aligned map.
+  const positions = combo.keyPositions ?? [];
+  const isSwitchChord =
+    positions.length === 2 && positions.includes(1) && positions.includes(10);
+  const isUnlockChord = positions.includes(39) && positions.includes(45);
+
+  return (
+    identity.includes("universalswitch") ||
+    identity.includes("switchtohana") ||
+    identity.includes("switchtochocofi") ||
+    identity.includes("studiounlock") ||
+    isSwitchChord ||
+    isUnlockChord
+  );
+}
 // Returns the behaviour map plus a `refresh` callback. The map is fetched on
 // connect/unlock; `refresh` re-fetches it so a behaviour claimed at runtime
 // (add_custom_behavior) shows up in the binding pickers without a reconnect.
@@ -411,6 +451,10 @@ export default function Keyboard({ page }: { page: Page }) {
 
       const oldEntry = combos.combos.find((entry) => entry.index === index);
       const oldCombo = oldEntry?.combo;
+      if (oldCombo && isCriticalCombo(oldCombo, behaviors)) {
+        console.warn("Refusing to delete a protected keyboard-switching or Studio Unlock combo", index);
+        return;
+      }
       if (!oldCombo) {
         console.error("Can't edit a combo that isn't loaded", index);
         return;
@@ -447,7 +491,7 @@ export default function Keyboard({ page }: { page: Page }) {
         };
       });
     },
-    [combos, conn, undoRedo, setCombos]
+    [combos, conn, undoRedo, setCombos, behaviors]
   );
 
   // Edit one config field of a custom behaviour in place (M3: RAM-only). We send
@@ -1006,6 +1050,10 @@ export default function Keyboard({ page }: { page: Page }) {
 
   const moveLayer = useCallback(
     (start: number, end: number) => {
+      if (isProtectedBaseLayer(keymap?.layers[start]) || isProtectedBaseLayer(keymap?.layers[end])) {
+        console.warn("Refusing to reorder a protected base layer", start, end);
+        return;
+      }
       const doMove = async (startIndex: number, destIndex: number) => {
         if (!conn.conn) {
           return;
@@ -1028,7 +1076,7 @@ export default function Keyboard({ page }: { page: Page }) {
         return () => doMove(end, start);
       });
     },
-    [conn, undoRedo, setKeymap]
+    [conn, undoRedo, setKeymap, keymap]
   );
 
   const addLayer = useCallback(() => {
@@ -1089,6 +1137,11 @@ export default function Keyboard({ page }: { page: Page }) {
   }, [conn, undoRedo, keymap, setKeymap]);
 
   const removeLayer = useCallback((targetIndex?: number) => {
+    const requestedIndex = targetIndex ?? selectedLayerIndex;
+    if (isProtectedBaseLayer(keymap?.layers[requestedIndex])) {
+      console.warn("Refusing to delete a protected base layer", requestedIndex);
+      return;
+    }
     async function doRemove(layerIndex: number): Promise<void> {
       if (!conn.conn || !keymap) {
         throw new Error("Not connected");
@@ -1146,7 +1199,7 @@ export default function Keyboard({ page }: { page: Page }) {
       throw new Error("No keymap loaded");
     }
 
-    const index = targetIndex ?? selectedLayerIndex;
+    const index = requestedIndex;
     const layerId = keymap.layers[index].id;
     const previousSelection = selectedLayerIndex;
     undoRedo?.(async () => {
@@ -1360,6 +1413,7 @@ export default function Keyboard({ page }: { page: Page }) {
                 layoutKeys={comboLayoutKeys}
                 maxKeysPerCombo={combos.maxKeysPerCombo}
                 onApply={doApplyCombo}
+                canDelete={!isCriticalCombo(draftCombo ?? selectedCombo?.combo, behaviors)}
                 onDelete={doRemoveCombo}
                 onMoveUp={
                   selectedCombo && canMoveCombo(selectedCombo.index, -1)
@@ -1399,6 +1453,7 @@ export default function Keyboard({ page }: { page: Page }) {
         {keymap && (
           <LayerPicker
             layers={keymap.layers}
+            protectedLayerIds={keymap.layers.filter(isProtectedBaseLayer).map(({ id }) => id)}
             selectedLayerIndex={selectedLayerIndex}
             onLayerClicked={setSelectedLayerIndex}
             onLayerMoved={moveLayer}

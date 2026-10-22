@@ -21,6 +21,8 @@ export type KeyPosition = PropsWithChildren<{
   r?: number;
   rx?: number;
   ry?: number;
+  /** Hidden in a board-specific visual projection without changing its array index. */
+  hidden?: boolean;
 }>;
 
 interface PhysicalLayoutProps {
@@ -129,7 +131,7 @@ export const PhysicalLayout = ({
     };
   }, [zoom, width, height]);
 
-  const positionItems = positions.map((p, idx) => (
+  const positionItems = positions.map((p, idx) => p.hidden ? null : (
     <div
       key={p.id}
       onClick={interactive ? () => onPositionClicked?.(idx) : undefined}

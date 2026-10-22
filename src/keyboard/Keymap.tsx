@@ -251,7 +251,14 @@ export const Keymap = ({
     return <></>;
   }
 
+  const activeLayerName = (
+    keymap.layers[selectedLayerIndex].name || layers[selectedLayerIndex]?.name || ""
+  ).trim().toLowerCase();
+  const isChocofiBase = activeLayerName === "base_c";
   const positions = layout.keys.map((k, i) => {
+    // BASE_C uses the firmware-aligned index map, but Chocofi has no outer
+    // thumb keys. Hide positions 1 and 8 visually (zero-based 38 and 45) only;
+    // keep every entry in the array so key selection and combo indices stay intact.
     if (i >= keymap.layers[selectedLayerIndex].bindings.length) {
       return {
         id: `${keymap.layers[selectedLayerIndex].id}-${i}`,
@@ -259,6 +266,7 @@ export const Keymap = ({
         y: k.y / 100.0,
         width: k.width / 100,
         height: k.height / 100.0,
+        hidden: isChocofiBase && (i === 38 || i === 45),
         children: <span></span>,
       };
     }
@@ -273,6 +281,7 @@ export const Keymap = ({
       y: k.y / 100.0,
       width: k.width / 100,
       height: k.height / 100.0,
+      hidden: isChocofiBase && (i === 38 || i === 45),
       r: (k.r || 0) / 100.0,
       rx: (k.rx || 0) / 100.0,
       ry: (k.ry || 0) / 100.0,
