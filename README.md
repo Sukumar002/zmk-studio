@@ -27,14 +27,14 @@ manifest:
   projects:
     - name: zmk
       remote: sukumar
-      revision: b19edf953498bf9d0a4598eb39d04e7e43339b08
+      revision: 7e05bf9846900e6eafd7b4665ac5240dcaca7b39
       import: app/west.yml
 
   self:
     path: config
 ```
 
-That ZMK commit already pulls the matching custom `zmk-studio-messages` protocol definitions through its own `app/west.yml`, so a keyboard config does not need to add the messages repository separately.
+That firmware revision pins the matching `zmk-studio-messages` protocol definitions at commit `e416c02ad1a431de504270ed2477190a0ab5d5c2` through `app/west.yml`, so a keyboard config does not need to add the messages repository separately. The matching TypeScript client development branch is `architecture/pinned-studio-protocol` (commit `74b51813c3bcd762f548d4296d896a6ebc55d95a`); its postinstall uses the pinned submodule commit and no longer fetches a moving `main` branch.
 
 ### Enable Studio on the central half / dongle
 
@@ -47,16 +47,9 @@ The Studio-capable build target must enable ZMK Studio and an RPC transport. A t
   cmake-args: -DCONFIG_ZMK_STUDIO=y
 ```
 
-The custom firmware enables the following automatically when Studio RPC is enabled:
+The initial modular platform profile enables combo runtime editing when Studio RPC is enabled, but deliberately keeps `CONFIG_ZMK_BEHAVIOR_RUNTIME_EDITING=n` by default. This is intentional: hold-tap and sticky-key timing remains firmware-defined and cannot be changed accidentally through Studio while ordinary key remapping and combo editing are in use.
 
-```text
-CONFIG_ZMK_COMBO_RUNTIME_EDITING=y
-CONFIG_ZMK_BEHAVIOR_RUNTIME_EDITING=y
-```
-
-These can also be set explicitly in a central shield/board `.conf` if desired.
-
-Runtime custom-behavior editing currently provides pre-allocated editable pools for hold-tap and sticky-key behaviors. The pool is supplied by the custom ZMK firmware; users do not need to add those runtime behavior nodes to their own keymap.
+Runtime custom-behavior editing can still be enabled explicitly in a future profile, but it is not part of the initial regression-safe profile. Do not enable it for the first board migrations.
 
 ### Runtime-addable layers
 
