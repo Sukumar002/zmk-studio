@@ -1,6 +1,6 @@
 # ZMK Studio Custom
 
-An experimental personal/community fork of ZMK Studio focused on practical split-keyboard workflows: runtime combo editing, custom behaviors, clearer key legends, backup/restore, mouse settings, and standalone desktop builds.
+An experimental personal/community fork of ZMK Studio focused on practical split-keyboard workflows: runtime combo editing, firmware-defined custom behaviors, clearer key legends, backup/restore, mouse settings, and standalone desktop builds.
 
 ## Web app
 
@@ -16,7 +16,7 @@ Installing ZMK Studio Custom by itself does **not** add those capabilities to st
 
 ### Recommended firmware base
 
-For the same feature set used by the current v1 application, point your ZMK config at the tested ZMK fork/commit:
+For the initial modular dongle profile, point your ZMK config at this tested ZMK fork/commit:
 
 ```yaml
 manifest:
