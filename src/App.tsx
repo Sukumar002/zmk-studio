@@ -5,6 +5,7 @@ import {
   RpcConnection,
 } from "@zmkfirmware/zmk-studio-ts-client";
 import { call_rpc } from "./rpc/logging";
+import { isRpcNotFoundError } from "./rpc/isRpcNotFoundError";
 
 import type { Notification } from "@zmkfirmware/zmk-studio-ts-client/studio";
 import { ConnectionState, ConnectionContext } from "./rpc/ConnectionContext";
@@ -78,14 +79,6 @@ const WEB_BLE_SUPPORTED =
 // the flags page. Not a layout constraint: the flag name wraps at its own
 // hyphens, so neither spelling overflows the tooltip's `max-w-xs` (see the
 // WirelessUnavailableTooltip story, which screenshots the bubble).
-function isRpcNotFoundError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    error.name === "MetaError" &&
-    /Meta error:\s*2/.test(error.message)
-  );
-}
-
 const BLE_REQUIREMENTS =
   "Needs Web Bluetooth: Chrome or Edge on Linux, with " +
   "#experimental-web-platform-features enabled in chrome://flags.\n\n" +
