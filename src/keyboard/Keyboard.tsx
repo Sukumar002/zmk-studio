@@ -85,7 +85,7 @@ type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
 
 function isProtectedCombo(combo: Combo, behaviors: BehaviorMap): boolean {
   const normalize = (value: string) =>
-    value.toLowerCase().replace(/[\\s_-]+/g, " ").trim();
+    value.toLowerCase().replace(/[\s_-]+/g, " ").trim();
   const protectedNames = new Set([
     "studio unlock",
     "bootloader",
@@ -455,7 +455,7 @@ export default function Keyboard({ page }: { page: Page }) {
         };
       });
     },
-    [combos, conn, undoRedo, setCombos]
+    [combos, conn, undoRedo, setCombos, behaviors]
   );
 
   // Edit one config field of a custom behaviour in place (M3: RAM-only). We send
