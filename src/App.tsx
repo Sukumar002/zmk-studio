@@ -347,18 +347,6 @@ function App() {
         );
       }
 
-      const behaviorResp = await call_rpc(conn.conn, {
-        behaviors: { saveChanges: true },
-      });
-      if (
-        !behaviorResp.behaviors?.saveChanges ||
-        behaviorResp.behaviors?.saveChanges.err
-      ) {
-        console.error(
-          "Failed to save custom behavior changes",
-          behaviorResp.behaviors?.saveChanges
-        );
-      }
     }
 
     doSave();
@@ -384,12 +372,6 @@ function App() {
         console.error("Failed to discard combo changes", comboResp);
       }
 
-      const behaviorResp = await call_rpc(conn.conn, {
-        behaviors: { discardChanges: true },
-      });
-      if (!behaviorResp.behaviors?.discardChanges) {
-        console.error("Failed to discard custom behavior changes", behaviorResp);
-      }
 
       reset();
       setConn({ conn: conn.conn });
@@ -418,8 +400,9 @@ function App() {
     doReset();
   }, [conn, reset]);
 
-  // Reads the full editable state (keymap, combos, custom behaviours, the
-  // behaviour registry, device info) straight from the device and downloads it
+  // Reads the editable keymap, combos, behaviour registry and device info
+  // straight from the device and downloads a backup. Custom behavior editing
+  // is intentionally disabled so typing timing remains firmware-owned.
   // as a versioned JSON backup. Re-reading here — instead of lifting Keyboard's
   // state up — keeps the feature self-contained; export is rare enough that a
   // few extra RPC reads don't matter.
@@ -434,13 +417,11 @@ function App() {
         .keymap?.getKeymap;
       const combos = (await call_rpc(c, { combos: { getCombos: true } }))
         .combos?.getCombos;
-      const customBehaviors = (
-        await call_rpc(c, { behaviors: { getCustomBehaviors: true } })
-      ).behaviors?.getCustomBehaviors;
+      const customBehaviors = { behaviors: [], max: 0 };
       const deviceInfo = (await call_rpc(c, { core: { getDeviceInfo: true } }))
         .core?.getDeviceInfo;
 
-      if (!keymap || !combos || !customBehaviors || !deviceInfo) {
+      if (!keymap || !combos || !deviceInfo) {
         console.error("Backup export failed to read device state", {
           keymap,
           combos,

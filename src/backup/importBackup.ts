@@ -30,16 +30,10 @@ import {
   RemoveComboErrorCode,
   type Combo,
 } from "@zmkfirmware/zmk-studio-ts-client/combos";
-import {
-  SetCustomBehaviorResponse,
-  AddCustomBehaviorErrorCode,
-  type ConfigField,
-} from "@zmkfirmware/zmk-studio-ts-client/behaviors";
 
 import { call_rpc } from "../rpc/logging";
 import { fetchBehaviorMap } from "../rpc/fetchBehaviorMap";
 import type { BackupV1, ExportedBinding } from "./backupFormat";
-import { jsonToConfigValue } from "./serializeConfigValue";
 import { createReport, skip, type ImportReport } from "./importReport";
 
 export async function importBackup(
@@ -48,60 +42,15 @@ export async function importBackup(
 ): Promise<ImportReport> {
   const report = createReport();
 
-  // ---- Phase 1: full-replace the custom behaviour pool -------------------
-  const currentCustoms = (
-    await call_rpc(conn, { behaviors: { getCustomBehaviors: true } })
-  ).behaviors?.getCustomBehaviors;
-  if (!currentCustoms) {
-    report.fatal = "Could not read the device's custom behaviors";
-    return report;
+  // Custom behavior restore is intentionally skipped. Imported hold-tap
+  // configurations must not override the firmware-owned typing timings.
+  for (const cb of backup.customBehaviors ?? []) {
+    skip(report, "customBehavior", '"' + cb.displayName + '"',
+         "custom behavior editing is disabled; timing remains firmware-owned");
   }
 
-  for (const existing of currentCustoms.behaviors) {
-    const resp = await call_rpc(conn, {
-      behaviors: { removeCustomBehavior: { id: existing.id } },
-    });
-    // NOT_FOUND just means it's already gone; anything else is worth a note,
-    // because a stale slot may shadow a slot the file wants.
-    if (!resp.behaviors?.removeCustomBehavior?.ok) {
-      skip(
-        report,
-        "customBehavior",
-        `existing "${existing.displayName}"`,
-        `could not remove pre-existing slot (err ${resp.behaviors?.removeCustomBehavior?.err})`
-      );
-    }
-  }
-
-  // Re-add with empty config (firmware seeds DT defaults); the full config —
-  // possibly containing behaviorRef fields that need the complete id map —
-  // is applied in the second pass below.
-  const oldToNewCustomId = new Map<number, number>();
-  for (const cb of backup.customBehaviors) {
-    const resp = await call_rpc(conn, {
-      behaviors: {
-        addCustomBehavior: {
-          kind: cb.kind,
-          displayName: cb.displayName,
-          config: [],
-        },
-      },
-    });
-    const ok = resp.behaviors?.addCustomBehavior?.ok;
-    if (ok) {
-      oldToNewCustomId.set(cb.originalId, ok.id);
-    } else {
-      const err = resp.behaviors?.addCustomBehavior?.err;
-      const reason =
-        err === AddCustomBehaviorErrorCode.ADD_CUSTOM_BEHAVIOR_ERR_NO_SPACE
-          ? "no free pool slot"
-          : `add failed (err ${err})`;
-      skip(report, "customBehavior", `"${cb.displayName}"`, reason);
-    }
-  }
-
-  // ---- Phase 2: behaviour resolver ----------------------------------------
-  // Fetched AFTER the adds so the registry includes the new custom slots.
+  // ---- Phase 1: behaviour resolver ------------------------------------------
+  // Built-in behavior ids may change across firmware builds; resolve by name.
   const liveMap = await fetchBehaviorMap(conn);
   const nameToLiveId = new Map<string, number>();
   for (const details of Object.values(liveMap)) {
@@ -116,9 +65,6 @@ export async function importBackup(
   }
 
   const resolveBehaviorId = (id: number, name: string): number | null => {
-    // Custom behaviours from the file got fresh ids above.
-    const remapped = oldToNewCustomId.get(id);
-    if (remapped !== undefined) return remapped;
     // Prefer the exported id when it still names the same behaviour (the
     // common no-firmware-change case), else fall back to name resolution.
     if (liveMap[id]?.displayName === name) return id;
@@ -127,46 +73,7 @@ export async function importBackup(
     return null;
   };
 
-  // ---- Phase 3: second pass — custom behaviour configs --------------------
-  for (const cb of backup.customBehaviors) {
-    const newId = oldToNewCustomId.get(cb.originalId);
-    if (newId === undefined) continue; // add failed; already reported
-
-    const config: ConfigField[] = [];
-    for (const field of cb.config) {
-      const value = jsonToConfigValue(field.value, resolveBehaviorId);
-      if (value === null) {
-        skip(
-          report,
-          "configField",
-          `"${cb.displayName}" / ${field.key}`,
-          `referenced behavior "${field.value.behaviorRef?.behaviorName}" not found`
-        );
-        continue;
-      }
-      // schema is response-only; the firmware matches by key on a set.
-      config.push({ key: field.key, displayName: "", value, schema: undefined });
-    }
-
-    const resp = await call_rpc(conn, {
-      behaviors: { setCustomBehavior: { id: newId, config } },
-    });
-    if (
-      resp.behaviors?.setCustomBehavior ===
-      SetCustomBehaviorResponse.SET_CUSTOM_BEHAVIOR_RESP_OK
-    ) {
-      report.applied.customBehaviors++;
-    } else {
-      skip(
-        report,
-        "customBehavior",
-        `"${cb.displayName}"`,
-        `config rejected (${resp.behaviors?.setCustomBehavior})`
-      );
-    }
-  }
-
-  // ---- Phase 4: reconcile layers ------------------------------------------
+  // ---- Phase 2: reconcile layers ------------------------------------------
   const readKeymap = async (): Promise<Keymap | undefined> =>
     (await call_rpc(conn, { keymap: { getKeymap: true } })).keymap?.getKeymap;
 
@@ -421,20 +328,5 @@ export async function importBackup(
   if (!combosSave.combos?.saveChanges || combosSave.combos.saveChanges.err) {
     skip(report, "save", "combos", `save failed (err ${combosSave.combos?.saveChanges?.err})`);
   }
-  const behaviorsSave = await call_rpc(conn, {
-    behaviors: { saveChanges: true },
-  });
-  if (
-    !behaviorsSave.behaviors?.saveChanges ||
-    behaviorsSave.behaviors.saveChanges.err
-  ) {
-    skip(
-      report,
-      "save",
-      "behaviors",
-      `save failed (err ${behaviorsSave.behaviors?.saveChanges?.err})`
-    );
-  }
-
   return report;
 }

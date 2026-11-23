@@ -20,7 +20,6 @@ import {
   Upload,
   Layers,
   Combine,
-  SlidersHorizontal,
   X,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -47,7 +46,6 @@ export interface AppHeaderProps {
 const NAV_ITEMS: { id: Page; label: string; icon: ReactNode }[] = [
   { id: "layers", label: "Layers", icon: <Layers /> },
   { id: "combos", label: "Combos", icon: <Combine /> },
-  { id: "behaviours", label: "Behaviors", icon: <SlidersHorizontal /> },
 ];
 
 export const AppHeader = ({
@@ -101,18 +99,7 @@ export const AppHeader = ({
     setCombosUnsaved(unsaved)
   );
 
-  // Custom behaviours share the same unsaved indicator + Save/Discard buttons
-  // (M6). Track their unsaved state independently and OR it into the rest.
-  const [behaviorsUnsaved, setBehaviorsUnsaved] = useConnectedDeviceData<boolean>(
-    { behaviors: { checkUnsavedChanges: true } },
-    (r) => r.behaviors?.checkUnsavedChanges
-  );
-
-  useSub<boolean>("rpc_notification.behaviors.unsavedChangesStatusChanged", (unsaved) =>
-    setBehaviorsUnsaved(unsaved)
-  );
-
-  const unsaved = !!keymapUnsaved || !!combosUnsaved || !!behaviorsUnsaved;
+  const unsaved = !!keymapUnsaved || !!combosUnsaved;
 
   return (
     <header className="top-0 left-0 right-0 flex items-center justify-between gap-2 h-16 max-w-full bg-base-200 border-b border-base-line">
