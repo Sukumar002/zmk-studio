@@ -78,7 +78,7 @@ function hanaLegend(
   layerName: string,
   position: number
 ): React.ReactNode | undefined {
-  const name = (behavior?.displayName || "").toLowerCase();
+  // Zephyr behavior node names such as `mouse_move` may reach Studio\n  // with underscores instead of the human-readable spacing used below.\n  const name = (behavior?.displayName || "").toLowerCase().replace(/[_-]+/g, " ").trim();
   const p1 = binding.param1 || 0;
   const p2 = binding.param2 || 0;
   const icon = "w-4 h-4";
