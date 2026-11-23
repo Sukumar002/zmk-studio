@@ -113,6 +113,10 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable # Set this to dtolnay/rust-toolchain@nightly
         with:
+          # Rust 1.100 changes never-type fallback and breaks bluer 0.16.1
+          # (pulled in by bluest 0.6.6) on Linux. Keep Linux on 1.99 until
+          # that dependency is updated; leave Windows/macOS on current stable.
+          toolchain: ${{ contains(matrix.platform, 'ubuntu') && '1.99.0' || 'stable' }}
           # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
