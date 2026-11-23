@@ -39,6 +39,7 @@ import Keyboard, { type Page } from "./keyboard/Keyboard";
 import { UndoRedoContext, useUndoRedo } from "./undoRedo";
 import { publish, useSub } from "./usePubSub";
 import { LockState } from "@zmkfirmware/zmk-studio-ts-client/core";
+import type { CustomBehaviors } from "@zmkfirmware/zmk-studio-ts-client/behaviors";
 import { LockStateContext } from "./rpc/LockStateContext";
 import { UnlockModal } from "./UnlockModal";
 import { valueAfter } from "./misc/async";
@@ -77,6 +78,14 @@ const WEB_BLE_SUPPORTED =
 // the flags page. Not a layout constraint: the flag name wraps at its own
 // hyphens, so neither spelling overflows the tooltip's `max-w-xs` (see the
 // WirelessUnavailableTooltip story, which screenshots the bubble).
+function isRpcNotFoundError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.name === "MetaError" &&
+    /Meta error:\s*2/.test(error.message)
+  );
+}
+
 const BLE_REQUIREMENTS =
   "Needs Web Bluetooth: Chrome or Edge on Linux, with " +
   "#experimental-web-platform-features enabled in chrome://flags.\n\n" +
@@ -432,30 +441,41 @@ function App() {
       }
       const c = conn.conn;
 
-      const keymap = (await call_rpc(c, { keymap: { getKeymap: true } }))
-        .keymap?.getKeymap;
-      const combos = (await call_rpc(c, { combos: { getCombos: true } }))
-        .combos?.getCombos;
-      const customBehaviors = (
-        await call_rpc(c, { behaviors: { getCustomBehaviors: true } })
-      ).behaviors?.getCustomBehaviors;
-      const deviceInfo = (await call_rpc(c, { core: { getDeviceInfo: true } }))
-        .core?.getDeviceInfo;
-
-      if (!keymap || !combos || !customBehaviors || !deviceInfo) {
-        console.error("Backup export failed to read device state", {
-          keymap,
-          combos,
-          customBehaviors,
-          deviceInfo,
-        });
-        window.alert("Failed to read the device state for the backup");
-        return;
-      }
-
-      const behaviorMap = await fetchBehaviorMap(c);
-
       try {
+        const keymap = (await call_rpc(c, { keymap: { getKeymap: true } }))
+          .keymap?.getKeymap;
+        const combos = (await call_rpc(c, { combos: { getCombos: true } }))
+          .combos?.getCombos;
+
+        // Older firmware builds do not register this optional RPC. Treat only
+        // RPC_NOT_FOUND as an unsupported capability: keymap and combo data
+        // are still valuable and must remain exportable. Never hide transport,
+        // lock, or decoding failures behind an empty custom-behaviour list.
+        let customBehaviors: CustomBehaviors | undefined;
+        let customBehaviorsUnavailable = false;
+        try {
+          customBehaviors = (
+            await call_rpc(c, { behaviors: { getCustomBehaviors: true } })
+          ).behaviors?.getCustomBehaviors;
+        } catch (error) {
+          if (!isRpcNotFoundError(error)) {
+            throw error;
+          }
+          customBehaviors = { behaviors: [], max: 0 };
+          customBehaviorsUnavailable = true;
+          console.warn(
+            "Firmware does not support getCustomBehaviors; exporting keymap and combos without custom behavior definitions."
+          );
+        }
+
+        const deviceInfo = (await call_rpc(c, { core: { getDeviceInfo: true } }))
+          .core?.getDeviceInfo;
+
+        if (!keymap || !combos || !customBehaviors || !deviceInfo) {
+          throw new Error("Failed to read the device state for the backup");
+        }
+
+        const behaviorMap = await fetchBehaviorMap(c);
         const result = await downloadBackup(
           buildBackup({ keymap, combos, customBehaviors, behaviorMap, deviceInfo })
         );
@@ -463,9 +483,17 @@ function App() {
         if (result.kind === "desktop") {
           setExportedBackupPath(result.path);
         }
-      } catch (e) {
-        console.error("Backup export failed", e);
-        window.alert(`Failed to export the backup: ${e}`);
+
+        if (customBehaviorsUnavailable) {
+          window.alert(
+            "Backup exported with a compatibility warning. Your keymap layers and combos were saved, but this firmware does not support exporting custom behavior definitions."
+          );
+        }
+      } catch (error) {
+        console.error("Backup export failed", error);
+        window.alert(
+          `Failed to export the backup: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
 
