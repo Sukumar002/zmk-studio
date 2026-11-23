@@ -83,6 +83,23 @@ export type Page = "layers" | "combos" | "behaviours";
 
 type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
 
+function isProtectedCombo(combo: Combo, behaviors: BehaviorMap): boolean {
+  const normalize = (value: string) =>
+    value.toLowerCase().replace(/[\\s_-]+/g, " ").trim();
+  const protectedNames = new Set([
+    "studio unlock",
+    "bootloader",
+    "keyboard switch",
+    "switch keyboard",
+    "kb switch",
+  ]);
+  const behaviorName = behaviors[combo.binding?.behaviorId]?.displayName ?? "";
+  return (
+    protectedNames.has(normalize(behaviorName)) ||
+    protectedNames.has(normalize(combo.name ?? ""))
+  );
+}
+
 // Returns the behaviour map plus a `refresh` callback. The map is fetched on
 // connect/unlock; `refresh` re-fetches it so a behaviour claimed at runtime
 // (add_custom_behavior) shows up in the binding pickers without a reconnect.
@@ -194,10 +211,7 @@ function useLayouts(): [
 // driver's *_descriptor). The config form is rendered generically from the
 // schema, so no per-kind UI is needed — adding a kind here + a firmware pool is
 // the whole story (M10).
-const ADDABLE_KINDS: { kind: string; label: string }[] = [
-  { kind: "hold-tap", label: "hold-tap" },
-  { kind: "sticky-key", label: "sticky-key" },
-];
+const ADDABLE_KINDS: { kind: string; label: string }[] = [];
 
 export default function Keyboard({ page }: { page: Page }) {
   const [
@@ -236,12 +250,13 @@ export default function Keyboard({ page }: { page: Page }) {
 
   // Read the custom-behaviour pool, now editable in place (M3: RAM-only, lost
   // on reboot) via the generic schema-driven config editor.
-  const [customBehaviors, setCustomBehaviors, customBehaviorsError] =
-    useConnectedDeviceData<CustomBehaviors>(
-      { behaviors: { getCustomBehaviors: true } },
-      (resp) => resp?.behaviors?.getCustomBehaviors,
-      true
-    );
+  // Runtime custom behavior editing is disabled so typing timings remain
+  // firmware-owned. Keep an empty local pool for legacy view code.
+  const [customBehaviors, setCustomBehaviors] = useState<CustomBehaviors>({
+    behaviors: [],
+    max: 0,
+  });
+  const customBehaviorsError = undefined;
 
   const [selectedLayerIndex, setSelectedLayerIndex] = useState<number>(0);
   const [selectedKeyPosition, setSelectedKeyPosition] = useState<
@@ -407,6 +422,7 @@ export default function Keyboard({ page }: { page: Page }) {
         console.error("Can't edit a combo that isn't loaded", index);
         return;
       }
+      if (isProtectedCombo(oldCombo, behaviors)) return;
 
       const setCombo = async (target: Combo) => {
         if (!conn.conn) {
@@ -936,6 +952,7 @@ export default function Keyboard({ page }: { page: Page }) {
         console.error("Can't delete a combo that isn't loaded", index);
         return;
       }
+      if (isProtectedCombo(oldCombo, behaviors)) return;
 
       async function remove() {
         if (!conn.conn) {
@@ -993,11 +1010,12 @@ export default function Keyboard({ page }: { page: Page }) {
         };
       });
     },
-    [combos, conn, undoRedo, setCombos]
+    [combos, conn, undoRedo, setCombos, behaviors]
   );
 
   const moveLayer = useCallback(
     (start: number, end: number) => {
+      if (start === 0 || end === 0) return;
       const doMove = async (startIndex: number, destIndex: number) => {
         if (!conn.conn) {
           return;
@@ -1081,6 +1099,7 @@ export default function Keyboard({ page }: { page: Page }) {
   }, [conn, undoRedo, keymap, setKeymap]);
 
   const removeLayer = useCallback(() => {
+    if (selectedLayerIndex === 0) return;
     async function doRemove(layerIndex: number): Promise<void> {
       if (!conn.conn || !keymap) {
         throw new Error("Not connected");
@@ -1285,6 +1304,9 @@ export default function Keyboard({ page }: { page: Page }) {
     // Raw key positions aren't remapped across layouts, so any layout is just a
     // visual aid for the key-position picker; use the active/selected one.
     const comboLayoutKeys = layouts?.[selectedPhysicalLayoutIndex]?.keys;
+    const selectedComboProtected = !draftCombo && selectedCombo?.combo
+      ? isProtectedCombo(selectedCombo.combo, behaviors)
+      : false;
     return (
       <div className="grid grid-cols-[auto_1fr] grid-rows-[minmax(0,1fr)] bg-base-300 max-w-full min-w-0 min-h-0">
         <div className={SIDEBAR_REGION}>
@@ -1312,6 +1334,11 @@ export default function Keyboard({ page }: { page: Page }) {
               the Apply button. */}
           <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col pb-6">
             {keymap && combos && (draftCombo || selectedCombo?.combo) ? (
+              selectedComboProtected ? (
+                <div className="grid flex-1 place-items-center text-center text-base-content/60">
+                  <p>This system combo is protected and cannot be edited or deleted.</p>
+                </div>
+              ) : (
               <ComboEditor
                 // Remount when switching between the draft and a real combo so
                 // the editor's local field state reloads from the new source.
@@ -1338,6 +1365,7 @@ export default function Keyboard({ page }: { page: Page }) {
                     : undefined
                 }
               />
+              )
             ) : (
               <div className="grid flex-1 place-items-center text-center text-base-content/60">
                 <p>Select a combo to edit, or add a new one.</p>
@@ -1382,7 +1410,7 @@ export default function Keyboard({ page }: { page: Page }) {
             <LayerToolbar
               name={keymap.layers[selectedLayerIndex].name ?? ""}
               placeholder={selectedLayerIndex.toString()}
-              canDelete={(keymap.layers?.length || 0) > 1}
+              canDelete={selectedLayerIndex > 0 && (keymap.layers?.length || 0) > 1}
               onRename={(newName) => {
                 const layer = keymap.layers[selectedLayerIndex];
                 changeLayerName(layer.id, layer.name ?? "", newName);
