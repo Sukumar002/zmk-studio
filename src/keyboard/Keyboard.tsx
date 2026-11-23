@@ -93,7 +93,8 @@ function isProtectedCombo(combo: Combo, behaviors: BehaviorMap): boolean {
     "switch keyboard",
     "kb switch",
   ]);
-  const behaviorName = behaviors[combo.binding?.behaviorId]?.displayName ?? "";
+  const behaviorId = combo.binding?.behaviorId;
+  const behaviorName = behaviorId === undefined ? "" : behaviors[behaviorId]?.displayName ?? "";
   return (
     protectedNames.has(normalize(behaviorName)) ||
     protectedNames.has(normalize(combo.name ?? ""))
@@ -252,7 +253,7 @@ export default function Keyboard({ page }: { page: Page }) {
   // on reboot) via the generic schema-driven config editor.
   // Runtime custom behavior editing is disabled so typing timings remain
   // firmware-owned. Keep an empty local pool for legacy view code.
-  const [customBehaviors, setCustomBehaviors] = useState<CustomBehaviors>({
+  const [customBehaviors, setCustomBehaviors] = useState<CustomBehaviors | undefined>({
     behaviors: [],
     max: 0,
   });
